@@ -745,6 +745,7 @@ const state = {
     page: 1,
     loading: false,
     lastData: null,
+    forceRefresh: true,
   },
   news: {
     loading: false,
@@ -752,6 +753,9 @@ const state = {
   },
   chartsInited: {},
 };
+
+const JOBS_AUTO_REFRESH_MS = 120000; // 2 min
+
 
 // ── Timestamp updater ─────────────────────────────────────
 function startTimestamp() {
@@ -825,9 +829,11 @@ async function loadJobs(opts = {}) {
       type:  state.jobs.type,
       source: state.jobs.source,
       page:  state.jobs.page,
+      force: !!state.jobs.forceRefresh,
     });
 
     state.jobs.lastData = data;
+    state.jobs.forceRefresh = false;
 
     // Stats bar
     if (statsEl) {
@@ -875,7 +881,7 @@ async function loadJobs(opts = {}) {
 
       paginEl.querySelectorAll('.page-btn:not([disabled])').forEach(btn => {
         btn.addEventListener('click', () => {
-          loadJobs({ page: parseInt(btn.dataset.p) });
+          loadJobs({ page: parseInt(btn.dataset.p), forceRefresh: false });
         });
       });
     }
@@ -910,7 +916,7 @@ function initJobsPage() {
       state.jobs.query  = input ? input.value.trim() || 'software engineer' : 'software engineer';
       state.jobs.type   = fType  ? fType.value  : 'all';
       state.jobs.source = fSrc   ? fSrc.value   : 'all';
-      loadJobs();
+      loadJobs({ forceRefresh: true });
     });
   }
 
@@ -929,7 +935,7 @@ function initJobsPage() {
         if (input) input.value = q;
         state.jobs.query = q;
         state.jobs.page  = 1;
-        loadJobs();
+        loadJobs({ forceRefresh: true });
       });
     });
   }
@@ -1000,6 +1006,14 @@ function initNewsPage() {
   }
 }
 
+function startJobsAutoRefresh() {
+  setInterval(() => {
+    if (document.hidden) return;
+    if (window.location.hash.replace('#', '').toLowerCase() !== 'jobs') return;
+    loadJobs({ forceRefresh: true });
+  }, JOBS_AUTO_REFRESH_MS);
+}
+
 // ── Page Change Handler ───────────────────────────────────
 function onPageChange(page) {
   switch (page) {
@@ -1007,7 +1021,7 @@ function onPageChange(page) {
       initDashboardCharts();
       break;
     case 'jobs':
-      if (!state.jobs.lastData) loadJobs();
+      loadJobs({ forceRefresh: true });
       break;
     case 'trends':
       initTrendsCharts();
@@ -1048,6 +1062,7 @@ document.addEventListener('DOMContentLoaded', () => {
   startTimestamp();
   initJobsPage();
   initNewsPage();
+  startJobsAutoRefresh();
 
   // Boot router — triggers onPageChange for initial page
   Router.init(onPageChange);
