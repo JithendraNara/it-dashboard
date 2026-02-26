@@ -152,13 +152,75 @@ def fetch_arbeitnow(timeout=15):
     return jobs
 
 
+# ── Role relevance filter ─────────────────────────────────────────────────────
+# Only show IT / engineering / data roles on the dashboard
+TARGET_ROLE_KEYWORDS = [
+    "software engineer", "software developer", "data engineer", "data analyst",
+    "data scientist", "ml engineer", "machine learning", "ai engineer",
+    "full stack", "fullstack", "front end", "frontend", "front-end",
+    "back end", "backend", "back-end", "python", "java developer",
+    "devops", "sre", "site reliability", "cloud engineer", "platform engineer",
+    "analytics engineer", "bi engineer", "bi developer", "business intelligence",
+    "systems engineer", "infrastructure", "security engineer", "devsecops",
+    "react", "node", "golang", "rust developer", "typescript",
+    "database", "etl", "data pipeline", "airflow", "spark",
+    "aws", "azure", "gcp", "kubernetes", "docker",
+    "qa engineer", "test engineer", "sdet", "automation engineer",
+    "solutions architect", "technical lead", "tech lead", "engineering manager",
+]
+
+EXCLUDE_ROLE_KEYWORDS = [
+    "account director", "account manager", "account executive",
+    "office assistant", "office manager", "receptionist",
+    "sales rep", "sales manager", "sales associate",
+    "customer success", "customer support", "customer service",
+    "copywriter", "content writer", "social media manager",
+    "hr manager", "recruiter", "talent acquisition",
+    "graphic designer", "interior designer",
+    "nurse", "doctor", "pharmacist", "dental",
+    "teacher", "tutor", "instructor",
+    "driver", "warehouse", "janitor", "cleaner",
+    "bookkeeper", "payroll", "billing specialist",
+]
+
+def is_relevant_role(job):
+    """Check if a job is an IT/engineering role."""
+    title = job.get("title", "").lower()
+    tags  = " ".join(job.get("tags", [])).lower()
+    text  = f"{title} {tags}"
+
+    # Exclude obvious non-tech roles
+    for kw in EXCLUDE_ROLE_KEYWORDS:
+        if kw in title:
+            return False
+
+    # Include if title or tags match target keywords
+    for kw in TARGET_ROLE_KEYWORDS:
+        if kw in text:
+            return True
+
+    # Also include if common tech tags are present
+    tech_tags = {"python", "javascript", "react", "node", "aws", "docker",
+                 "kubernetes", "sql", "typescript", "java", "golang", "rust",
+                 "devops", "machine-learning", "data", "ai", "ml", "cloud",
+                 "backend", "frontend", "full-stack", "engineering"}
+    job_tags_lower = {t.lower() for t in job.get("tags", [])}
+    if job_tags_lower & tech_tags:
+        return True
+
+    return False
+
+
 def filter_jobs(jobs, query="", location="", job_type=""):
+    # Always apply role relevance filter first
+    relevant = [j for j in jobs if is_relevant_role(j)]
+
     if not query and not location and not job_type:
-        return jobs
+        return relevant
     filtered = []
     q   = query.lower()
     loc = location.lower()
-    for j in jobs:
+    for j in relevant:
         text = f"{j['title']} {j['company']} {' '.join(j['tags'])} {j['snippet']}".lower()
         if q and q not in text:
             continue
