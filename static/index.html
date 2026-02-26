@@ -745,7 +745,7 @@ const state = {
     page: 1,
     loading: false,
     lastData: null,
-    forceRefresh: true,
+    forceRefresh: false,
   },
   news: {
     loading: false,
@@ -921,7 +921,7 @@ function initJobsPage() {
       state.jobs.query  = input ? input.value.trim() : '';
       state.jobs.type   = fType  ? fType.value  : 'all';
       state.jobs.source = fSrc   ? fSrc.value   : 'all';
-      loadJobs({ forceRefresh: true });
+      loadJobs({ forceRefresh: false });
     });
   }
 
@@ -940,7 +940,7 @@ function initJobsPage() {
         if (input) input.value = q;
         state.jobs.query = q;
         state.jobs.page  = 1;
-        loadJobs({ forceRefresh: true });
+        loadJobs({ forceRefresh: false });
       });
     });
   }
@@ -1015,7 +1015,7 @@ function startJobsAutoRefresh() {
   setInterval(() => {
     if (document.hidden) return;
     if (window.location.hash.replace('#', '').toLowerCase() !== 'jobs') return;
-    loadJobs({ forceRefresh: true });
+    loadJobs({ forceRefresh: false });
   }, JOBS_AUTO_REFRESH_MS);
 }
 
@@ -1026,7 +1026,7 @@ function onPageChange(page) {
       initDashboardCharts();
       break;
     case 'jobs':
-      loadJobs({ forceRefresh: true });
+      loadJobs({ forceRefresh: false });
       break;
     case 'trends':
       initTrendsCharts();
