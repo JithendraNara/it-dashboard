@@ -1,0 +1,1061 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>IT Jobs Intelligence Dashboard</title>
+  <meta name="description" content="Live IT jobs market intelligence — jobs, trends, news, and strategy." />
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=Instrument+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+
+  <!-- Styles -->
+  <link rel="stylesheet" href="./css/styles.css" />
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════════════════════
+     TOP NAVIGATION
+══════════════════════════════════════════════════════════ -->
+<nav id="nav">
+  <a class="nav-brand" href="#dashboard">
+    <div class="brand-icon">⚡</div>
+    <span class="brand-name">IT Intelligence</span>
+    <span class="brand-version">v2</span>
+  </a>
+
+  <ul class="nav-links">
+    <li><a href="#dashboard" data-route="dashboard"><span class="nav-dot"></span>Dashboard</a></li>
+    <li><a href="#jobs" data-route="jobs"><span class="nav-dot"></span>Live Jobs</a></li>
+    <li><a href="#trends" data-route="trends"><span class="nav-dot"></span>Market Trends</a></li>
+    <li><a href="#news" data-route="news"><span class="nav-dot"></span>Live News</a></li>
+    <li><a href="#insights" data-route="insights"><span class="nav-dot"></span>Insights</a></li>
+  </ul>
+
+  <button class="nav-hamburger" id="hamburger" aria-label="Open menu">
+    <span></span><span></span><span></span>
+  </button>
+</nav>
+
+<!-- Mobile nav -->
+<div class="nav-mobile-menu" id="mobileMenu">
+  <a href="#dashboard" data-route="dashboard">⚡ Dashboard</a>
+  <a href="#jobs" data-route="jobs">💼 Live Jobs</a>
+  <a href="#trends" data-route="trends">📈 Market Trends</a>
+  <a href="#news" data-route="news">📰 Live News</a>
+  <a href="#insights" data-route="insights">🧠 Insights</a>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════
+     APP CONTAINER
+══════════════════════════════════════════════════════════ -->
+<div id="app">
+
+  <!-- ════════════════════════════════════════════════════════
+       PAGE 1: DASHBOARD OVERVIEW (#dashboard)
+  ════════════════════════════════════════════════════════ -->
+  <section id="page-dashboard" class="page">
+
+    <!-- Page Header -->
+    <div class="page-header">
+      <h1 class="page-heading">IT Jobs Intelligence <span style="color:var(--cyan)">Dashboard</span></h1>
+      <p class="page-subheading">Live market data · Real-time jobs · February 2026</p>
+    </div>
+
+    <!-- Live Pulse Bar -->
+    <div class="pulse-bar">
+      <div class="live-indicator">
+        <div class="live-dot"></div>
+        LIVE
+      </div>
+      <div class="divider"></div>
+      <div class="pulse-item">
+        <span class="label">Market Status:</span>
+        <span class="value" style="color:var(--amber)">⚠ Cautious Recovery</span>
+      </div>
+      <div class="divider"></div>
+      <div class="pulse-item">
+        <span class="label">Last Updated:</span>
+        <span class="value mono" id="live-timestamp" style="color:var(--white)">—</span>
+      </div>
+      <div class="divider"></div>
+      <div class="pulse-item">
+        <span class="label">AI Disruption Index:</span>
+        <span class="value" style="color:var(--magenta); font-weight:700;">◆ HIGH</span>
+      </div>
+      <div class="divider"></div>
+      <div class="pulse-item">
+        <span class="label">Tech Unemployment:</span>
+        <span class="value" style="color:var(--lime)">3.6% <span style="color:var(--muted);font-size:11px;">(vs 4.3% national)</span></span>
+      </div>
+    </div>
+
+    <!-- KPI Row 1 -->
+    <div class="kpi-grid mb-16">
+      <div class="kpi-card cyan">
+        <div class="kpi-value">+10% YoY</div>
+        <div class="kpi-label">Software Jobs Growth</div>
+        <div class="kpi-source">Source: FRED/Indeed Feb 2026</div>
+        <div class="kpi-sublabel">Despite 5.8% overall job decline</div>
+      </div>
+      <div class="kpi-card magenta">
+        <div class="kpi-value">−73%</div>
+        <div class="kpi-label">Entry-Level Hiring</div>
+        <div class="kpi-source">Source: Ravio 2026</div>
+        <div class="kpi-sublabel">Junior roles near elimination</div>
+      </div>
+      <div class="kpi-card lime">
+        <div class="kpi-value">58%</div>
+        <div class="kpi-label">Postings Require AI Skills</div>
+        <div class="kpi-source">Source: Dice Feb 2026</div>
+        <div class="kpi-sublabel">Up 108% year-over-year</div>
+      </div>
+      <div class="kpi-card amber">
+        <div class="kpi-value">$206K</div>
+        <div class="kpi-label">AI Engineer Avg Salary</div>
+        <div class="kpi-source">Source: Glassdoor 2026</div>
+        <div class="kpi-sublabel">Top of market compensation</div>
+      </div>
+    </div>
+
+    <!-- KPI Row 2 -->
+    <div class="kpi-grid mb-20">
+      <div class="kpi-card cyan">
+        <div class="kpi-value">3.6%</div>
+        <div class="kpi-label">Tech Unemployment</div>
+        <div class="kpi-source">Source: BLS Feb 2026</div>
+        <div class="kpi-sublabel">Below 4.3% national average</div>
+      </div>
+      <div class="kpi-card magenta">
+        <div class="kpi-value">750K</div>
+        <div class="kpi-label">Cyber Openings (US)</div>
+        <div class="kpi-source">Source: Cybersecurity Ventures</div>
+        <div class="kpi-sublabel">Unfilled positions nationwide</div>
+      </div>
+      <div class="kpi-card lime">
+        <div class="kpi-value">317K</div>
+        <div class="kpi-label">New IT Jobs / Year</div>
+        <div class="kpi-source">Source: BLS 2024–2034</div>
+        <div class="kpi-sublabel">Projected annual addition</div>
+      </div>
+      <div class="kpi-card amber">
+        <div class="kpi-value">50K+</div>
+        <div class="kpi-label">Layoffs 2026 YTD</div>
+        <div class="kpi-source">Source: Layoffs.fyi / multiple</div>
+        <div class="kpi-sublabel">Amazon 16K, eBay 800, Meta RL…</div>
+      </div>
+    </div>
+
+    <!-- Live News Ticker -->
+    <div class="ticker-wrap mb-20">
+      <div class="ticker-label">LIVE FEED</div>
+      <div style="overflow:hidden;flex:1;">
+        <div class="ticker-track" id="ticker-track">
+          <!-- Populated by JS -->
+          <span class="ticker-item"><span class="ticker-dot"></span>Loading headlines…</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Two Column Charts -->
+    <div class="two-col mb-16">
+      <div class="chart-card">
+        <div class="chart-title">Avg Tech Salary 2019–2024</div>
+        <div class="chart-source">Source: Dice Tech Salary Report · Levels.fyi · NACE</div>
+        <canvas id="chart-salary" height="200"></canvas>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">Fastest Growing Roles (YoY %)</div>
+        <div class="chart-source">Source: LinkedIn Emerging Jobs · Dice Feb 2026</div>
+        <canvas id="chart-growing" height="200"></canvas>
+      </div>
+    </div>
+
+    <!-- Top Paying Roles Full Width -->
+    <div class="chart-card">
+      <div class="chart-title">Top Paying Tech Roles — 2025/2026</div>
+      <div class="chart-source">Source: Glassdoor · Levels.fyi · Dice Salary Report 2026</div>
+      <canvas id="chart-salary-roles" height="140"></canvas>
+    </div>
+
+  </section>
+
+
+  <!-- ════════════════════════════════════════════════════════
+       PAGE 2: LIVE JOBS (#jobs)
+  ════════════════════════════════════════════════════════ -->
+  <section id="page-jobs" class="page">
+
+    <div class="page-header">
+      <h1 class="page-heading">Live <span style="color:var(--cyan)">Job Listings</span></h1>
+      <p class="page-subheading">Real-time aggregation from Remotive · RemoteOK · Arbeitnow</p>
+    </div>
+
+    <!-- Search Bar -->
+    <div class="jobs-search-bar">
+      <div class="search-input-wrap">
+        <span class="search-icon">🔍</span>
+        <input
+          type="text"
+          class="search-input"
+          id="jobs-search-input"
+          placeholder="Search live IT jobs… e.g. &quot;python data engineer&quot;"
+          autocomplete="off"
+        />
+      </div>
+
+      <!-- Quick Chips -->
+      <div class="chips-row" id="chips-row">
+        <span class="chip" data-query="Data Engineer">Data Engineer</span>
+        <span class="chip" data-query="AI ML">AI/ML</span>
+        <span class="chip" data-query="Python">Python</span>
+        <span class="chip" data-query="DevOps">DevOps</span>
+        <span class="chip" data-query="Cybersecurity">Cybersecurity</span>
+        <span class="chip" data-query="Cloud AWS">Cloud</span>
+        <span class="chip" data-query="Full Stack">Full Stack</span>
+        <span class="chip" data-query="React">React</span>
+        <span class="chip" data-query="Data Analyst">Data Analyst</span>
+        <span class="chip" data-query="LLM Engineer">LLM Engineer</span>
+      </div>
+
+      <!-- Filters -->
+      <div class="filter-row">
+        <div class="filter-group">
+          <label>Type:</label>
+          <select class="filter-select" id="filter-type">
+            <option value="all">All</option>
+            <option value="remote">Remote</option>
+            <option value="full-time">Full-time</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <label>Source:</label>
+          <select class="filter-select" id="filter-source">
+            <option value="all">All Sources</option>
+            <option value="RemoteOK">RemoteOK</option>
+            <option value="Remotive">Remotive</option>
+            <option value="Arbeitnow">Arbeitnow</option>
+          </select>
+        </div>
+        <button class="search-btn" id="jobs-search-btn">Search Jobs</button>
+      </div>
+    </div>
+
+    <!-- Stats Bar -->
+    <div class="jobs-stats-bar" id="jobs-stats-bar">
+      <span class="stat-item highlight">Loading jobs…</span>
+    </div>
+
+    <!-- Results -->
+    <div id="jobs-results">
+      <!-- Skeleton while loading -->
+      <div id="jobs-skeleton">
+        <div class="skeleton skeleton-card"></div>
+        <div class="skeleton skeleton-card"></div>
+        <div class="skeleton skeleton-card"></div>
+        <div class="skeleton skeleton-card" style="height:80px"></div>
+        <div class="skeleton skeleton-card" style="height:80px"></div>
+      </div>
+    </div>
+
+    <!-- Pagination -->
+    <div class="pagination" id="jobs-pagination"></div>
+
+  </section>
+
+
+  <!-- ════════════════════════════════════════════════════════
+       PAGE 3: MARKET TRENDS (#trends)
+  ════════════════════════════════════════════════════════ -->
+  <section id="page-trends" class="page">
+
+    <div class="page-header">
+      <h1 class="page-heading">Market <span style="color:var(--magenta)">Trends</span></h1>
+      <p class="page-subheading">Historical data · Layoff timelines · BLS projections · AI impact</p>
+    </div>
+
+    <!-- Section: Layoffs Timeline -->
+    <div class="section-header">
+      <span class="section-title"><span class="accent">▣</span> TECH LAYOFFS TIMELINE</span>
+      <span class="section-badge badge-live">Live Data</span>
+    </div>
+    <div class="full-chart-card mb-20">
+      <div class="chart-title">Tech Industry Layoffs: 2022 – 2026 YTD</div>
+      <div class="chart-source">Source: Layoffs.fyi · BrainSource · TechCrunch Reports · Confirmed company announcements</div>
+      <canvas id="chart-layoffs" height="220"></canvas>
+    </div>
+
+    <!-- Section: Career Transitions -->
+    <div class="section-header">
+      <span class="section-title"><span class="accent">▣</span> CAREER TRANSITION PATTERNS</span>
+    </div>
+    <div class="full-chart-card mb-20">
+      <div class="chart-title">Post-Layoff Pivot Paths (BrainSource Survey Data)</div>
+      <div class="chart-source">Source: BrainSource 2025 · LinkedIn Career Insights · Hired.com</div>
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>From → To</th>
+            <th>Transition Rate</th>
+            <th>Trend</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Frontend Dev → Full-Stack + AI</td>
+            <td class="pct">28%</td>
+            <td><div class="bar-fill-wrap"><div class="bar-fill" style="width:56%"></div></div></td>
+          </tr>
+          <tr>
+            <td>Data Analyst → ML / Data Engineering</td>
+            <td class="pct">31%</td>
+            <td><div class="bar-fill-wrap"><div class="bar-fill" style="width:62%"></div></div></td>
+          </tr>
+          <tr>
+            <td>Consumer App Dev → B2B SaaS</td>
+            <td class="pct">34%</td>
+            <td><div class="bar-fill-wrap"><div class="bar-fill" style="width:68%"></div></div></td>
+          </tr>
+          <tr>
+            <td>Product Manager → AI Product Manager</td>
+            <td class="pct">26%</td>
+            <td><div class="bar-fill-wrap"><div class="bar-fill" style="width:52%"></div></div></td>
+          </tr>
+          <tr>
+            <td>QA Engineer → DevOps / DevSecOps</td>
+            <td class="pct">18%</td>
+            <td><div class="bar-fill-wrap"><div class="bar-fill" style="width:36%"></div></div></td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="reemployment-strip">
+        <div class="re-item">
+          <div class="re-value">5.2 <span style="font-size:14px">mo</span></div>
+          <div class="re-label">Avg re-employment time (2023)</div>
+        </div>
+        <div class="re-item" style="border-left:1px solid rgba(255,255,255,0.06);padding-left:20px;">
+          <div class="re-value" style="color:var(--lime)">3.9 <span style="font-size:14px">mo</span></div>
+          <div class="re-label">Avg re-employment time (2025)</div>
+        </div>
+        <div class="re-item" style="border-left:1px solid rgba(255,255,255,0.06);padding-left:20px;">
+          <div class="re-value" style="color:var(--cyan)">↓25%</div>
+          <div class="re-label">Improvement in time-to-rehire</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Section: BLS 10-Year Projections -->
+    <div class="section-header">
+      <span class="section-title"><span class="accent">▣</span> BLS 10-YEAR PROJECTIONS 2024–2034</span>
+    </div>
+    <div class="full-chart-card mb-20">
+      <div class="chart-title">Projected Job Growth by Occupation (2024–2034)</div>
+      <div class="chart-source">Source: Bureau of Labor Statistics (BLS) Occupational Outlook Handbook 2024</div>
+      <canvas id="chart-bls" height="220"></canvas>
+      <div style="margin-top:12px;display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:8px">
+        <div class="kpi-card lime" style="padding:12px;">
+          <div class="kpi-value" style="font-size:18px">+267,700</div>
+          <div class="kpi-label" style="font-size:12px">New Software Dev Jobs</div>
+        </div>
+        <div class="kpi-card cyan" style="padding:12px;">
+          <div class="kpi-value" style="font-size:18px">+82,500</div>
+          <div class="kpi-label" style="font-size:12px">New Data Scientist Jobs</div>
+        </div>
+        <div class="kpi-card magenta" style="padding:12px;">
+          <div class="kpi-value" style="font-size:18px">+52,100</div>
+          <div class="kpi-label" style="font-size:12px">New Cybersecurity Jobs</div>
+        </div>
+        <div class="kpi-card amber" style="padding:12px;">
+          <div class="kpi-value" style="font-size:18px">+545,600</div>
+          <div class="kpi-label" style="font-size:12px">Total Computer/Math Jobs</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Section: AI Impact Scorecard -->
+    <div class="section-header">
+      <span class="section-title"><span class="accent">▣</span> AI IMPACT SCORECARD</span>
+    </div>
+    <div class="full-chart-card">
+      <div class="chart-title">The AI Disruption Reality — 2025/2026</div>
+      <div class="chart-source">Source: McKinsey Global Institute · Ravio 2026 · LinkedIn Economic Graph · General Assembly</div>
+      <div class="ai-impact-grid">
+        <div class="impact-card">
+          <div class="impact-pct" style="color:var(--amber)">6%</div>
+          <div class="impact-label">of US jobs (~10M) fully automatable by 2030</div>
+        </div>
+        <div class="impact-card">
+          <div class="impact-pct" style="color:var(--magenta)">30%</div>
+          <div class="impact-label">of jobs face substantial task automation</div>
+        </div>
+        <div class="impact-card">
+          <div class="impact-pct" style="color:var(--cyan)">60%</div>
+          <div class="impact-label">of jobs will see meaningful AI workflow changes</div>
+        </div>
+        <div class="impact-card">
+          <div class="impact-pct" style="color:var(--magenta)">−73%</div>
+          <div class="impact-label">entry-level tech hiring collapse (Ravio 2026)</div>
+        </div>
+        <div class="impact-card">
+          <div class="impact-pct" style="color:var(--lime)">+88%</div>
+          <div class="impact-label">AI/ML hiring growth YoY across all sectors</div>
+        </div>
+        <div class="impact-card">
+          <div class="impact-pct" style="color:var(--cyan)">42×</div>
+          <div class="impact-label">demand surge: Forward Deployed Engineers (LinkedIn)</div>
+        </div>
+      </div>
+    </div>
+
+  </section>
+
+
+  <!-- ════════════════════════════════════════════════════════
+       PAGE 4: LIVE NEWS (#news)
+  ════════════════════════════════════════════════════════ -->
+  <section id="page-news" class="page">
+
+    <div class="page-header">
+      <h1 class="page-heading">Live <span style="color:var(--lime)">News Feed</span></h1>
+      <p class="page-subheading">TechCrunch · Hacker News · Dice Insights · The Verge</p>
+    </div>
+
+    <!-- Controls -->
+    <div class="news-controls">
+      <div class="live-indicator">
+        <div class="live-dot"></div>
+        LIVE FEED
+      </div>
+      <button class="refresh-btn" id="news-refresh-btn">
+        <span class="refresh-icon">↻</span> Refresh
+      </button>
+      <span class="last-updated" id="news-last-updated">Loading…</span>
+    </div>
+
+    <!-- News Grid -->
+    <div class="news-grid" id="news-grid">
+      <!-- Skeletons -->
+      <div class="skeleton skeleton-news"></div>
+      <div class="skeleton skeleton-news"></div>
+      <div class="skeleton skeleton-news"></div>
+      <div class="skeleton skeleton-news"></div>
+      <div class="skeleton skeleton-news"></div>
+      <div class="skeleton skeleton-news"></div>
+    </div>
+
+  </section>
+
+
+  <!-- ════════════════════════════════════════════════════════
+       PAGE 5: INSIGHTS & STRATEGY (#insights)
+  ════════════════════════════════════════════════════════ -->
+  <section id="page-insights" class="page">
+
+    <div class="page-header">
+      <h1 class="page-heading">Insights &amp; <span style="color:var(--amber)">Strategy</span></h1>
+      <p class="page-subheading">What it all means — curated intelligence for IT professionals</p>
+    </div>
+
+    <!-- Section 1: State of IT 2026 -->
+    <div class="section-header mb-16">
+      <span class="section-title"><span class="accent">▣</span> THE STATE OF IT IN 2026</span>
+    </div>
+    <div class="insights-grid mb-20">
+      <div class="insight-card" data-num="01">
+        <div class="insight-text"><strong style="color:var(--cyan)">AI is the dividing line.</strong> 58% of tech postings now require AI skills, up 108% YoY. Non-AI roles are disappearing.</div>
+        <div class="insight-source">Source: Dice Tech Salary Report Feb 2026</div>
+      </div>
+      <div class="insight-card" data-num="02">
+        <div class="insight-text"><strong style="color:var(--magenta)">Entry-level is collapsing.</strong> −73% junior roles. Senior engineers using AI tools now replace 3 junior hires.</div>
+        <div class="insight-source">Source: Ravio 2026 Compensation Survey</div>
+      </div>
+      <div class="insight-card" data-num="03">
+        <div class="insight-text"><strong style="color:var(--lime)">Software jobs actually UP 10% YoY</strong> despite a 5.8% overall job market decline. Tech is diverging from broader economy.</div>
+        <div class="insight-source">Source: FRED / Indeed Labor Analytics Feb 2026</div>
+      </div>
+      <div class="insight-card" data-num="04">
+        <div class="insight-text"><strong style="color:var(--amber)">Hottest job: Forward Deployed Engineer.</strong> $325K–$400K+ at OpenAI, Anthropic, xAI. Engineering meets enterprise customer success.</div>
+        <div class="insight-source">Source: Reuters / OpenAI Job Postings</div>
+      </div>
+      <div class="insight-card" data-num="05">
+        <div class="insight-text"><strong style="color:var(--cyan)">Cybersecurity = near-zero unemployment.</strong> 750K unfilled US positions. Every company is underdefended.</div>
+        <div class="insight-source">Source: Cybersecurity Ventures 2025/2026</div>
+      </div>
+      <div class="insight-card" data-num="06">
+        <div class="insight-text"><strong style="color:var(--lime)">Re-employment is faster.</strong> 3.9 months avg (2025) vs. 5.2 months (2023) — a 25% improvement.</div>
+        <div class="insight-source">Source: BrainSource Tech Talent Survey 2025</div>
+      </div>
+      <div class="insight-card" data-num="07">
+        <div class="insight-text"><strong style="color:var(--amber)">Microsoft warns: AI boosts seniors, drags juniors.</strong> A "Preceptor model" of structured mentorship is needed to preserve junior pathways.</div>
+        <div class="insight-source">Source: The Register / Microsoft Internal Research</div>
+      </div>
+      <div class="insight-card" data-num="08">
+        <div class="insight-text"><strong style="color:var(--magenta)">83% of recruiters say upskilling &gt; hiring</strong> for AI readiness. Companies investing in internal AI talent conversion are winning.</div>
+        <div class="insight-source">Source: General Assembly Hiring Outlook 2026</div>
+      </div>
+    </div>
+
+    <!-- Section 2: Top Cities -->
+    <div class="section-header mb-16">
+      <span class="section-title"><span class="accent">▣</span> TOP CITIES FOR TECH (RANKED)</span>
+    </div>
+    <div class="full-chart-card mb-20">
+      <div class="chart-title">Tech Opportunity Index by Metro Area</div>
+      <div class="chart-source">Source: Dice City &amp; Salary Index 2025 · LinkedIn Job Insights · CompTIA</div>
+      <div class="cities-list" style="margin-top:14px;">
+        <div class="city-row">
+          <span class="city-rank">1</span>
+          <span class="city-name">San Jose, CA</span>
+          <div class="city-bar"><div class="city-bar-fill" style="width:100%"></div></div>
+          <span class="city-score">81.4</span>
+        </div>
+        <div class="city-row">
+          <span class="city-rank">2</span>
+          <span class="city-name">Boulder, CO</span>
+          <div class="city-bar"><div class="city-bar-fill" style="width:95%"></div></div>
+          <span class="city-score">77.8</span>
+        </div>
+        <div class="city-row">
+          <span class="city-rank">3</span>
+          <span class="city-name">Seattle, WA</span>
+          <div class="city-bar"><div class="city-bar-fill" style="width:91%"></div></div>
+          <span class="city-score">74.6</span>
+        </div>
+        <div class="city-row">
+          <span class="city-rank">4</span>
+          <span class="city-name">Austin, TX</span>
+          <div class="city-bar"><div class="city-bar-fill" style="width:72%"></div></div>
+          <span class="city-score">58.7</span>
+        </div>
+        <div class="city-row">
+          <span class="city-rank">5</span>
+          <span class="city-name">Washington, DC</span>
+          <div class="city-bar"><div class="city-bar-fill" style="width:69%"></div></div>
+          <span class="city-score">56.6</span>
+        </div>
+        <div class="city-row">
+          <span class="city-rank">6</span>
+          <span class="city-name">Charlotte, NC</span>
+          <div class="city-bar"><div class="city-bar-fill" style="width:68%"></div></div>
+          <span class="city-score">55.5</span>
+        </div>
+        <div class="city-row" style="border:1px solid rgba(0,229,255,0.2);background:rgba(0,229,255,0.04)">
+          <span class="city-rank" style="color:var(--cyan)">7</span>
+          <span class="city-name" style="color:var(--cyan)">Bloomington, IN ★</span>
+          <div class="city-bar"><div class="city-bar-fill" style="width:62%"></div></div>
+          <span class="city-score" style="color:var(--cyan)">50.6</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Section 3: Skills Heatmap -->
+    <div class="section-header mb-16">
+      <span class="section-title"><span class="accent">▣</span> SKILLS DEMAND HEATMAP 2026</span>
+    </div>
+    <div class="full-chart-card mb-20">
+      <div class="chart-title">In-Demand Skills by Category</div>
+      <div class="chart-source">Source: Dice Skills Report 2026 · LinkedIn Top Skills · Hired.com · Stack Overflow Survey</div>
+      <div class="skills-heatmap" style="margin-top:16px;">
+        <div class="skills-category">
+          <span class="skills-cat-label ai">AI / ML</span>
+          <div class="skill-pills">
+            <span class="skill-pill hot-3">Python</span>
+            <span class="skill-pill hot-3">LangChain</span>
+            <span class="skill-pill hot-3">LLMs</span>
+            <span class="skill-pill hot-3">RAG</span>
+            <span class="skill-pill hot-2">PyTorch</span>
+            <span class="skill-pill hot-2">TensorFlow</span>
+            <span class="skill-pill hot-2">Prompt Engineering</span>
+            <span class="skill-pill hot-1">Hugging Face</span>
+            <span class="skill-pill hot-1">Fine-tuning</span>
+          </div>
+        </div>
+        <div class="skills-category">
+          <span class="skills-cat-label cloud">Cloud</span>
+          <div class="skill-pills">
+            <span class="skill-pill hot-3">AWS</span>
+            <span class="skill-pill hot-3">Kubernetes</span>
+            <span class="skill-pill hot-2">Azure</span>
+            <span class="skill-pill hot-2">GCP</span>
+            <span class="skill-pill hot-2">Docker</span>
+            <span class="skill-pill hot-2">Terraform</span>
+            <span class="skill-pill hot-1">Helm</span>
+            <span class="skill-pill hot-1">ArgoCD</span>
+          </div>
+        </div>
+        <div class="skills-category">
+          <span class="skills-cat-label data">Data</span>
+          <div class="skill-pills">
+            <span class="skill-pill hot-3">SQL</span>
+            <span class="skill-pill hot-3">dbt</span>
+            <span class="skill-pill hot-2">Spark</span>
+            <span class="skill-pill hot-2">Data Pipelines</span>
+            <span class="skill-pill hot-2">Snowflake</span>
+            <span class="skill-pill hot-1">Airflow</span>
+            <span class="skill-pill hot-1">Delta Lake</span>
+          </div>
+        </div>
+        <div class="skills-category">
+          <span class="skills-cat-label sec">Security</span>
+          <div class="skill-pills">
+            <span class="skill-pill hot-3">Zero Trust</span>
+            <span class="skill-pill hot-3">DevSecOps</span>
+            <span class="skill-pill hot-2">CISSP</span>
+            <span class="skill-pill hot-2">SOC Analysis</span>
+            <span class="skill-pill hot-2">SIEM</span>
+            <span class="skill-pill hot-1">Pen Testing</span>
+          </div>
+        </div>
+        <div class="skills-category">
+          <span class="skills-cat-label dev">Dev</span>
+          <div class="skill-pills">
+            <span class="skill-pill hot-3">TypeScript</span>
+            <span class="skill-pill hot-3">React</span>
+            <span class="skill-pill hot-2">Node.js</span>
+            <span class="skill-pill hot-2">Go</span>
+            <span class="skill-pill hot-1">Rust</span>
+            <span class="skill-pill hot-1">GraphQL</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Section 4: H-1B Landscape -->
+    <div class="section-header mb-16">
+      <span class="section-title"><span class="accent">▣</span> H-1B LANDSCAPE — TOP EMPLOYERS</span>
+    </div>
+    <div class="full-chart-card mb-20">
+      <div class="chart-title">Top H-1B Employers by Labor Condition Applications (2025)</div>
+      <div class="chart-source">Source: USCIS H-1B LCA Data · MyVisaJobs 2025</div>
+      <table class="h1b-table" style="margin-top:14px;">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Employer</th>
+            <th>LCAs Filed</th>
+            <th>Avg Salary</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="rank">1</td>
+            <td class="employer">Amazon</td>
+            <td class="lcas">15,500</td>
+            <td class="avg-salary">$157K</td>
+          </tr>
+          <tr>
+            <td class="rank">2</td>
+            <td class="employer">Cognizant</td>
+            <td class="lcas">11,100</td>
+            <td class="avg-salary">$112K</td>
+          </tr>
+          <tr>
+            <td class="rank">3</td>
+            <td class="employer">Ernst &amp; Young (EY)</td>
+            <td class="lcas">10,400</td>
+            <td class="avg-salary">$153K</td>
+          </tr>
+          <tr>
+            <td class="rank">4</td>
+            <td class="employer">Microsoft</td>
+            <td class="lcas">9,400</td>
+            <td class="avg-salary">$172K</td>
+          </tr>
+          <tr>
+            <td class="rank">5</td>
+            <td class="employer">Google</td>
+            <td class="lcas">8,900</td>
+            <td class="avg-salary">$185K</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Section 5: Action Plan -->
+    <div class="section-header mb-16">
+      <span class="section-title"><span class="accent">▣</span> YOUR ACTION PLAN</span>
+      <span class="section-badge" style="background:rgba(255,179,0,0.15);color:var(--amber);border:1px solid rgba(255,179,0,0.3);">Personalized</span>
+    </div>
+    <div class="full-chart-card">
+      <div class="chart-title">Recommended Path — Data Analyst / Software Engineer in Fort Wayne / Dallas Area</div>
+      <div class="chart-source">Based on market data · Your background · Current demand signals</div>
+      <div class="action-plan" style="margin-top:16px;">
+        <div class="action-item">
+          <div class="action-icon">🚀</div>
+          <div class="action-text">
+            <strong>Pivot into Data Engineering or ML Engineering</strong> — the #1 career transition from Data Analyst (31% do it). Strong salary jump: $120K → $160K+.
+          </div>
+        </div>
+        <div class="action-item">
+          <div class="action-icon">🧠</div>
+          <div class="action-text">
+            <strong>Learn LangChain, RAG, and LLM deployment</strong> — these skills are up 434% YoY in job postings. Build 2-3 portfolio projects on GitHub using real datasets.
+          </div>
+        </div>
+        <div class="action-item">
+          <div class="action-icon">📍</div>
+          <div class="action-text">
+            <strong>Target the Dallas market</strong> — consistently Top 5 city for tech postings. Strong in fintech (Fiserv, CBRE) and healthcare tech. Remote-first roles available globally.
+          </div>
+        </div>
+        <div class="action-item">
+          <div class="action-icon">🔐</div>
+          <div class="action-text">
+            <strong>Cybersecurity + Data is a goldmine intersection</strong> — near-zero unemployment, 750K unfilled roles. Adding a Security+ or cloud security cert to a data background is rare and high-value.
+          </div>
+        </div>
+        <div class="action-item">
+          <div class="action-icon">💡</div>
+          <div class="action-text">
+            <strong>Build an AI-augmented portfolio</strong> — show you can direct AI systems, not just write code. Recruiters want proof you multiply output with AI tools, not fear them.
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </section>
+
+</div><!-- /#app -->
+
+
+<!-- ══════════════════════════════════════════════════════════
+     SCRIPTS
+══════════════════════════════════════════════════════════ -->
+<script src="./js/router.js"></script>
+<script src="./js/api.js"></script>
+<script src="./js/charts.js"></script>
+
+<script>
+/* ============================================================
+   MAIN APP CONTROLLER
+   ============================================================ */
+
+// ── State ────────────────────────────────────────────────
+const state = {
+  jobs: {
+    query: 'software engineer',
+    type: 'all',
+    source: 'all',
+    page: 1,
+    loading: false,
+    lastData: null,
+  },
+  news: {
+    loading: false,
+    lastFetched: null,
+  },
+  chartsInited: {},
+};
+
+// ── Timestamp updater ─────────────────────────────────────
+function startTimestamp() {
+  const el = document.getElementById('live-timestamp');
+  function tick() {
+    if (el) el.textContent = new Date().toLocaleTimeString('en-US', {
+      hour: '2-digit', minute: '2-digit', second: '2-digit',
+    });
+  }
+  tick();
+  setInterval(tick, 1000);
+}
+
+// ── Dashboard Charts ──────────────────────────────────────
+function initDashboardCharts() {
+  if (state.chartsInited.dashboard) return;
+  state.chartsInited.dashboard = true;
+
+  setTimeout(() => {
+    Charts.initSalaryChart('chart-salary');
+    Charts.initGrowingRolesChart('chart-growing');
+    Charts.initSalaryRolesChart('chart-salary-roles');
+  }, 80);
+}
+
+// ── Trends Charts ─────────────────────────────────────────
+function initTrendsCharts() {
+  if (state.chartsInited.trends) return;
+  state.chartsInited.trends = true;
+
+  setTimeout(() => {
+    Charts.initLayoffsChart('chart-layoffs');
+    Charts.initBLSChart('chart-bls');
+  }, 80);
+}
+
+// ── Ticker ────────────────────────────────────────────────
+async function loadTicker() {
+  try {
+    const data = await API.fetchNews();
+    const track = document.getElementById('ticker-track');
+    if (track) {
+      track.innerHTML = API.renderTicker(data.news || []);
+    }
+  } catch (e) {
+    // Static ticker stays
+  }
+}
+
+// ── JOBS PAGE ─────────────────────────────────────────────
+async function loadJobs(opts = {}) {
+  if (state.jobs.loading) return;
+  state.jobs = { ...state.jobs, ...opts };
+  state.jobs.loading = true;
+
+  const resultsEl  = document.getElementById('jobs-results');
+  const skeletonEl = document.getElementById('jobs-skeleton');
+  const statsEl    = document.getElementById('jobs-stats-bar');
+  const paginEl    = document.getElementById('jobs-pagination');
+
+  // Show skeleton
+  if (resultsEl) {
+    resultsEl.innerHTML = API.skeletons(6, 'skeleton-card');
+  }
+  if (statsEl) statsEl.innerHTML = '<span class="stat-item">Fetching live jobs…</span>';
+  if (paginEl) paginEl.innerHTML = '';
+
+  try {
+    const data = await API.fetchJobs({
+      query: state.jobs.query,
+      type:  state.jobs.type,
+      source: state.jobs.source,
+      page:  state.jobs.page,
+    });
+
+    state.jobs.lastData = data;
+
+    // Stats bar
+    if (statsEl) {
+      const topTags = (data.top_tags || []).slice(0, 5).join(', ');
+      statsEl.innerHTML = `
+        <span class="stat-item highlight"><span>${data.total}</span> live jobs</span>
+        <span class="stat-item">from <span>3 sources</span></span>
+        <span class="stat-item"><span>${data.remote_count || 0}</span> remote</span>
+        <span class="stat-item"><span>${data.onsite_count || 0}</span> on-site</span>
+        ${topTags ? `<span class="stat-item">Top skills: <span>${API.escHtml(topTags)}</span></span>` : ''}
+        <span class="stat-item" style="margin-left:auto;color:var(--muted)">${data.from_cache ? '(cached)' : '(live)'}</span>
+      `;
+    }
+
+    // Jobs list
+    if (resultsEl) {
+      if (data.jobs && data.jobs.length > 0) {
+        resultsEl.innerHTML = data.jobs.map(j => API.renderJobCard(j)).join('');
+      } else {
+        resultsEl.innerHTML = `
+          <div class="empty-state">
+            <div class="empty-icon">🔍</div>
+            <p>No jobs found for "<strong>${API.escHtml(state.jobs.query)}</strong>"</p>
+            <p style="margin-top:8px;font-size:12px;">Try broader terms like "software", "data", or "engineer"</p>
+          </div>
+        `;
+      }
+    }
+
+    // Pagination
+    if (paginEl && data.total_pages > 1) {
+      const { page, total_pages } = data;
+      let html = '';
+
+      html += `<button class="page-btn" ${page <= 1 ? 'disabled' : ''} data-p="${page - 1}">← Prev</button>`;
+
+      const start = Math.max(1, page - 2);
+      const end   = Math.min(total_pages, page + 2);
+      for (let i = start; i <= end; i++) {
+        html += `<button class="page-btn ${i === page ? 'active' : ''}" data-p="${i}">${i}</button>`;
+      }
+
+      html += `<button class="page-btn" ${page >= total_pages ? 'disabled' : ''} data-p="${page + 1}">Next →</button>`;
+      paginEl.innerHTML = html;
+
+      paginEl.querySelectorAll('.page-btn:not([disabled])').forEach(btn => {
+        btn.addEventListener('click', () => {
+          loadJobs({ page: parseInt(btn.dataset.p) });
+        });
+      });
+    }
+
+  } catch (err) {
+    if (resultsEl) {
+      resultsEl.innerHTML = `
+        <div class="empty-state">
+          <div class="empty-icon">⚠️</div>
+          <p>Error loading jobs. The API may be warming up — try again in a moment.</p>
+          <p style="margin-top:8px;font-size:11px;color:var(--muted)">${err.message || ''}</p>
+        </div>
+      `;
+    }
+  } finally {
+    state.jobs.loading = false;
+  }
+}
+
+function initJobsPage() {
+  const input  = document.getElementById('jobs-search-input');
+  const btn    = document.getElementById('jobs-search-btn');
+  const chips  = document.getElementById('chips-row');
+  const fType  = document.getElementById('filter-type');
+  const fSrc   = document.getElementById('filter-source');
+
+  if (input) input.value = state.jobs.query;
+
+  if (btn) {
+    btn.addEventListener('click', () => {
+      state.jobs.page = 1;
+      state.jobs.query  = input ? input.value.trim() || 'software engineer' : 'software engineer';
+      state.jobs.type   = fType  ? fType.value  : 'all';
+      state.jobs.source = fSrc   ? fSrc.value   : 'all';
+      loadJobs();
+    });
+  }
+
+  if (input) {
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') btn && btn.click();
+    });
+  }
+
+  if (chips) {
+    chips.querySelectorAll('.chip').forEach(chip => {
+      chip.addEventListener('click', () => {
+        chips.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+        chip.classList.add('active');
+        const q = chip.dataset.query;
+        if (input) input.value = q;
+        state.jobs.query = q;
+        state.jobs.page  = 1;
+        loadJobs();
+      });
+    });
+  }
+}
+
+// ── NEWS PAGE ─────────────────────────────────────────────
+async function loadNews(force = false) {
+  if (state.news.loading) return;
+  state.news.loading = true;
+
+  const grid  = document.getElementById('news-grid');
+  const upd   = document.getElementById('news-last-updated');
+  const btn   = document.getElementById('news-refresh-btn');
+
+  if (btn) btn.classList.add('loading');
+  if (grid && force) {
+    grid.innerHTML = API.skeletons(6, 'skeleton-news');
+  }
+
+  try {
+    const data = await API.fetchNews(force);
+    const items = data.news || [];
+
+    state.news.lastFetched = new Date();
+
+    if (grid) {
+      if (items.length > 0) {
+        grid.innerHTML = items.map(n => API.renderNewsCard(n)).join('');
+      } else {
+        grid.innerHTML = `
+          <div class="empty-state" style="grid-column:1/-1">
+            <div class="empty-icon">📰</div>
+            <p>No news articles found. Refresh to try again.</p>
+          </div>
+        `;
+      }
+    }
+
+    if (upd) {
+      const since = Math.round((Date.now() - state.news.lastFetched.getTime()) / 60000);
+      upd.textContent = `Last updated: ${since <= 0 ? 'just now' : since + 'm ago'}`;
+      if (data.from_cache) {
+        const cacheAge = data.ts ? Math.round((Date.now() - data.ts * 1000) / 60000) : '?';
+        upd.textContent += ` (cached ~${cacheAge}m)`;
+      }
+    }
+
+  } catch (err) {
+    if (grid) {
+      grid.innerHTML = `
+        <div class="empty-state" style="grid-column:1/-1">
+          <div class="empty-icon">⚠️</div>
+          <p>Failed to load news. Check back in a moment.</p>
+          <p style="font-size:11px;margin-top:4px;color:var(--muted)">${err.message || ''}</p>
+        </div>
+      `;
+    }
+  } finally {
+    state.news.loading = false;
+    if (btn) btn.classList.remove('loading');
+  }
+}
+
+function initNewsPage() {
+  const btn = document.getElementById('news-refresh-btn');
+  if (btn) {
+    btn.addEventListener('click', () => loadNews(true));
+  }
+}
+
+// ── Page Change Handler ───────────────────────────────────
+function onPageChange(page) {
+  switch (page) {
+    case 'dashboard':
+      initDashboardCharts();
+      break;
+    case 'jobs':
+      if (!state.jobs.lastData) loadJobs();
+      break;
+    case 'trends':
+      initTrendsCharts();
+      break;
+    case 'news':
+      if (!state.news.lastFetched) loadNews();
+      break;
+    case 'insights':
+      // Static — no loading needed
+      break;
+  }
+}
+
+// ── Mobile Nav Toggle ─────────────────────────────────────
+const hamburger  = document.getElementById('hamburger');
+const mobileMenu = document.getElementById('mobileMenu');
+
+if (hamburger && mobileMenu) {
+  hamburger.addEventListener('click', () => {
+    mobileMenu.classList.toggle('open');
+  });
+
+  mobileMenu.querySelectorAll('a').forEach(a => {
+    a.addEventListener('click', () => {
+      mobileMenu.classList.remove('open');
+    });
+  });
+
+  document.addEventListener('click', (e) => {
+    if (!hamburger.contains(e.target) && !mobileMenu.contains(e.target)) {
+      mobileMenu.classList.remove('open');
+    }
+  });
+}
+
+// ── INIT ──────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  startTimestamp();
+  initJobsPage();
+  initNewsPage();
+
+  // Boot router — triggers onPageChange for initial page
+  Router.init(onPageChange);
+
+  // Load ticker in background for dashboard
+  loadTicker();
+});
+</script>
+
+</body>
+</html>

@@ -1,0 +1,49 @@
+name: Deploy to DigitalOcean
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy to Droplet
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.DROPLET_IP }}
+          username: root
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            set -euo pipefail
+            
+            # Pull latest code
+            cd /opt/dashboard/app
+            
+            # If repo not cloned yet, do initial setup
+            if [ ! -d ".git" ]; then
+              cd /opt/dashboard
+              rm -rf app
+              git clone https://github.com/JithendraNara/it-dashboard.git app
+              mkdir -p app/data
+              chown -R www-data:www-data app/data
+            else
+              git fetch origin
+              git reset --hard origin/main
+            fi
+            
+            # Update dependencies if requirements changed
+            /opt/dashboard/venv/bin/pip install -q -r requirements.txt
+            
+            # Restart the service
+            systemctl restart dashboard
+            
+            # Quick health check
+            sleep 3
+            curl -sf http://localhost:8000/health || echo "WARNING: health check failed"
+            
+            echo "Deploy complete at $(date)"

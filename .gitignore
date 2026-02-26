@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+venv/
+env/
+.env
+
+# Runtime data files (generated at runtime)
+data/jobs_cache.json
+data/news_cache.json
+data/dashboard_data.json
+data/dashboard_data.json.tmp
+
+# Gunicorn
+*.pid
+
+# OS
+.DS_Store
