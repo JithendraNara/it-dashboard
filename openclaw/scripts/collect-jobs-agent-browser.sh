@@ -49,6 +49,7 @@ MAX_AGE_DAYS = int(os.environ.get("JOBS_COLLECT_MAX_AGE_DAYS", "10"))
 PER_SOURCE_LIMIT = int(os.environ.get("JOBS_PER_SOURCE_LIMIT", "60"))
 PER_GREENHOUSE_BOARD_LIMIT = int(os.environ.get("JOBS_PER_GREENHOUSE_BOARD_LIMIT", "15"))
 USE_AGENT_BROWSER_REMOTEOK = os.environ.get("USE_AGENT_BROWSER_REMOTEOK", "0") == "1"
+USE_AGGREGATOR_SOURCES = os.environ.get("USE_AGGREGATOR_SOURCES", "0") == "1"
 
 DEFAULT_GREENHOUSE_BOARDS = [
     "stripe",
@@ -380,11 +381,15 @@ def collect_lever():
 # Collect + normalize + filter
 # -----------------------------------------------------------------------------
 collected = []
+# Tier 1: first-party ATS feeds (preferred)
 collected.extend(collect_greenhouse())
 collected.extend(collect_lever())
-collected.extend(collect_remotive())
-collected.extend(collect_remoteok())
-collected.extend(collect_arbeitnow())
+
+# Tier 2: aggregator feeds (optional fallback)
+if USE_AGGREGATOR_SOURCES:
+    collected.extend(collect_remotive())
+    collected.extend(collect_remoteok())
+    collected.extend(collect_arbeitnow())
 
 normalized = []
 for j in collected:
@@ -426,6 +431,7 @@ output = {
     "sources": sorted(list(source_counts.keys())),
     "source_counts": source_counts,
     "fresh_window_days": MAX_AGE_DAYS,
+    "aggregator_sources_enabled": USE_AGGREGATOR_SOURCES,
     "total": len(unique),
     "jobs": unique,
 }
