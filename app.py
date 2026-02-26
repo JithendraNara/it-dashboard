@@ -10,11 +10,12 @@ import os
 import re
 import html
 import time
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from pathlib import Path
 from urllib.request import urlopen, Request
 from urllib.error import URLError
 from xml.etree import ElementTree
+from email.utils import parsedate_to_datetime
 
 from flask import Flask, request, jsonify, send_from_directory, abort
 
@@ -41,6 +42,7 @@ CACHE_TTL = 1800   # 30 minutes
 MAX_BODY_SIZE = 1_048_576  # 1 MB
 JOBS_SNAPSHOT_MAX_AGE_SECONDS = 6 * 3600  # Hunter snapshot freshness window
 JOBS_SNAPSHOT_MAX_ITEMS = 1000
+JOBS_MAX_AGE_DAYS = int(os.environ.get("JOBS_MAX_AGE_DAYS", "10"))  # hide stale postings
 FALLBACK_SECRET = "REPLACE_ME_WITH_A_RANDOM_SECRET_STRING_32_CHARS_MINIMUM"
 
 
@@ -207,6 +209,56 @@ def normalize_ingested_job(job: dict) -> dict:
             or ""
         ),
     }
+
+
+def parse_posted_datetime(value):
+    """Parse job posted timestamp from common formats."""
+    if value is None:
+        return None
+    s = str(value).strip()
+    if not s:
+        return None
+
+    # unix timestamp seconds/milliseconds
+    if s.isdigit():
+        try:
+            ts = int(s)
+            if ts > 1_000_000_000_000:
+                ts = ts / 1000
+            if ts > 1_000_000_000:
+                return datetime.fromtimestamp(ts, tz=timezone.utc)
+        except Exception:
+            pass
+
+    # ISO formats (with or without Z)
+    try:
+        dt = datetime.fromisoformat(s.replace("Z", "+00:00"))
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return dt.astimezone(timezone.utc)
+    except Exception:
+        pass
+
+    # RFC 2822 style
+    try:
+        dt = parsedate_to_datetime(s)
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return dt.astimezone(timezone.utc)
+    except Exception:
+        return None
+
+
+def is_recent_job(job: dict, max_age_days: int = JOBS_MAX_AGE_DAYS) -> bool:
+    dt = parse_posted_datetime(job.get("posted") or job.get("posted_at"))
+    if dt is None:
+        # Keep unknown timestamps; source filters already narrow role quality.
+        return True
+    now = datetime.now(timezone.utc)
+    age = now - dt
+    if age < timedelta(days=-2):
+        return False
+    return age <= timedelta(days=max_age_days)
 
 
 # ── Role relevance filter ─────────────────────────────────────────────────────
@@ -574,7 +626,12 @@ def api_jobs():
         except Exception:
             pass
 
-    # Filter
+    # Freshness filter
+    pre_fresh_count = len(all_jobs)
+    all_jobs = [j for j in all_jobs if is_recent_job(j)]
+    stale_filtered = max(0, pre_fresh_count - len(all_jobs))
+
+    # Relevance/query filters
     filtered = filter_jobs(all_jobs, query, location, job_type)
 
     # Pagination
@@ -609,6 +666,8 @@ def api_jobs():
         "from_snapshot": from_snapshot,
         "data_source":   "hunter_snapshot" if from_snapshot else "market_apis",
         "fetched_at":    fetched_at,
+        "max_age_days":  JOBS_MAX_AGE_DAYS,
+        "stale_filtered": stale_filtered,
     }
     return cors_response(result)
 

@@ -842,12 +842,20 @@ async function loadJobs(opts = {}) {
         ? `<span class="stat-item">Filter: <span>${API.escHtml(state.jobs.query)}</span></span>`
         : `<span class="stat-item">Showing <span>all targeted jobs</span></span>`;
       const sourceLabel = data.from_snapshot ? 'hunter snapshot' : 'market APIs';
+      const freshnessLabel = data.max_age_days
+        ? `<span class="stat-item">Fresh window: <span>${data.max_age_days}d</span></span>`
+        : '';
+      const staleLabel = (data.stale_filtered && data.stale_filtered > 0)
+        ? `<span class="stat-item">Dropped stale: <span>${data.stale_filtered}</span></span>`
+        : '';
       statsEl.innerHTML = `
         <span class="stat-item highlight"><span>${data.total}</span> live jobs</span>
         <span class="stat-item">from <span>${sourceLabel}</span></span>
         <span class="stat-item"><span>${data.remote_count || 0}</span> remote</span>
         <span class="stat-item"><span>${data.onsite_count || 0}</span> on-site</span>
         ${queryLabel}
+        ${freshnessLabel}
+        ${staleLabel}
         ${topTags ? `<span class="stat-item">Top skills: <span>${API.escHtml(topTags)}</span></span>` : ''}
         <span class="stat-item" style="margin-left:auto;color:var(--muted)">${data.from_cache ? '(cached)' : '(live)'}</span>
       `;
