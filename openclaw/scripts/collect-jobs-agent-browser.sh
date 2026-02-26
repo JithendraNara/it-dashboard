@@ -1,25 +1,22 @@
 #!/usr/bin/env bash
 # =============================================================================
-# collect-jobs-agent-browser.sh — Agent Browser based targeted job collector
-# =============================================================================
-# Outputs JSON:
-# {
-#   "fetched_at": "ISO8601",
-#   "sources": ["Remotive", "RemoteOK", ...],
-#   "total": 24,
-#   "jobs": [ ...normalized jobs... ]
-# }
+# collect-jobs-agent-browser.sh
+# Diversified targeted job collector for Hunter.
 #
-# Primary sources are fetched via agent-browser (browser context), with HTTP
-# fallback where needed. This avoids brittle shell JSON interpolation.
+# Sources (diversified):
+# - Greenhouse board APIs (curated company list)
+# - Remotive API
+# - RemoteOK API
+# - Arbeitnow API
+#
+# Browser use:
+# - Optional agent-browser fetch path for RemoteOK when env
+#   USE_AGENT_BROWSER_REMOTEOK=1.
 # =============================================================================
 
 set -euo pipefail
 
-DASHBOARD_URL="${DASHBOARD_URL:-http://45.55.191.125}"
-TIMEOUT="${COLLECT_TIMEOUT:-25}"
 TARGET_ONLY=false
-
 for arg in "$@"; do
   case "$arg" in
     --target-only) TARGET_ONLY=true ;;
@@ -31,188 +28,343 @@ for arg in "$@"; do
 done
 
 TIMESTAMP="$(date -Iseconds)"
-WORKDIR="$(mktemp -d)"
-trap 'rm -rf "$WORKDIR"' EXIT
 
-log() { echo "[collect-jobs-agent-browser] $*" >&2; }
+python3 - "$TARGET_ONLY" "$TIMESTAMP" <<'PY'
+import json
+import os
+import re
+import subprocess
+import sys
+from datetime import datetime, timedelta, timezone
+from email.utils import parsedate_to_datetime
+from urllib.request import Request, urlopen
 
-write_json_or_empty() {
-  local out="$1"
-  cat > "$out" || true
-  python3 - "$out" <<'PY' >/dev/null 2>&1 || echo '{}' > "$out"
-import json,sys
-p=sys.argv[1]
-with open(p,'r',encoding='utf-8',errors='ignore') as f:
-    json.load(f)
-PY
-}
+TARGET_ONLY = (sys.argv[1].lower() == "true")
+TIMESTAMP = sys.argv[2]
 
-fetch_agent_browser_json() {
-  local url="$1"
-  local out="$2"
+# -----------------------------------------------------------------------------
+# Tunables
+# -----------------------------------------------------------------------------
+MAX_AGE_DAYS = int(os.environ.get("JOBS_COLLECT_MAX_AGE_DAYS", "10"))
+PER_SOURCE_LIMIT = int(os.environ.get("JOBS_PER_SOURCE_LIMIT", "60"))
+PER_GREENHOUSE_BOARD_LIMIT = int(os.environ.get("JOBS_PER_GREENHOUSE_BOARD_LIMIT", "30"))
+USE_AGENT_BROWSER_REMOTEOK = os.environ.get("USE_AGENT_BROWSER_REMOTEOK", "0") == "1"
 
-  if ! command -v agent-browser >/dev/null 2>&1; then
-    log "agent-browser missing; writing empty JSON for $url"
-    echo '{}' > "$out"
-    return 0
-  fi
+DEFAULT_GREENHOUSE_BOARDS = [
+    "stripe",
+    "airtable",
+    "datadog",
+    "cloudflare",
+    "anthropic",
+    "figma",
+    "coinbase",
+    "roblox",
+]
 
-  # Reset browser session to reduce stuck-context errors.
-  agent-browser close >/dev/null 2>&1 || true
+greenhouse_boards = [
+    b.strip() for b in os.environ.get("GREENHOUSE_BOARDS", ",".join(DEFAULT_GREENHOUSE_BOARDS)).split(",") if b.strip()
+]
 
-  if ! agent-browser open "$url" >/dev/null 2>&1; then
-    log "WARNING: agent-browser open failed for $url"
-    echo '{}' > "$out"
-    agent-browser close >/dev/null 2>&1 || true
-    return 0
-  fi
+UA = "Mozilla/5.0 (OpenClaw Hunter Collector)"
 
-  # Body text from JSON endpoints is valid JSON text.
-  agent-browser get text body 2>/dev/null | write_json_or_empty "$out"
-  agent-browser close >/dev/null 2>&1 || true
-}
+# -----------------------------------------------------------------------------
+# Helpers
+# -----------------------------------------------------------------------------
+def clean_html(text: str) -> str:
+    if not text:
+        return ""
+    text = re.sub(r"<[^>]+>", "", str(text))
+    text = re.sub(r"\s+", " ", text)
+    return text.strip()[:240]
 
-fetch_http_json() {
-  local url="$1"
-  local out="$2"
-  curl -s --max-time "$TIMEOUT" -H "Accept: application/json" "$url" | write_json_or_empty "$out"
-}
 
-log "Starting collection at $TIMESTAMP"
+def fetch_json(url: str, timeout: int = 20):
+    req = Request(url, headers={"User-Agent": UA, "Accept": "application/json"})
+    with urlopen(req, timeout=timeout) as resp:
+        return json.loads(resp.read())
 
-# 1) Dashboard API (already role-filtered in app.py)
-fetch_http_json "${DASHBOARD_URL}/api/jobs.py?force=1" "$WORKDIR/dashboard.json"
 
-# 2) Remotive via agent-browser
-fetch_agent_browser_json "https://remotive.com/api/remote-jobs?category=software-dev&limit=50" "$WORKDIR/remotive.json"
-
-# 3) RemoteOK via agent-browser
-fetch_agent_browser_json "https://remoteok.com/api" "$WORKDIR/remoteok.json"
-
-# 4) Arbeitnow via HTTP
-fetch_http_json "https://www.arbeitnow.com/api/job-board-api" "$WORKDIR/arbeitnow.json"
-
-python3 - "$WORKDIR" "$TIMESTAMP" "$TARGET_ONLY" <<'PY'
-import json,sys
-from pathlib import Path
-
-workdir=Path(sys.argv[1])
-timestamp=sys.argv[2]
-target_only=sys.argv[3].lower()=="true"
-
-def load(name):
-    p=workdir/name
+def fetch_json_with_agent_browser(url: str):
+    """Optional browser-based JSON fetch for bot-sensitive endpoints."""
     try:
-        return json.loads(p.read_text(encoding='utf-8',errors='ignore'))
+        subprocess.run(["agent-browser", "close"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False)
+        opened = subprocess.run(["agent-browser", "open", url], capture_output=True, text=True, check=False)
+        if opened.returncode != 0:
+            return None
+        body = subprocess.run(["agent-browser", "get", "text", "body"], capture_output=True, text=True, check=False)
+        subprocess.run(["agent-browser", "close"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False)
+        if body.returncode != 0:
+            return None
+        return json.loads(body.stdout)
     except Exception:
-        return {}
+        return None
 
-dashboard=load('dashboard.json')
-remotive=load('remotive.json')
-remoteok=load('remoteok.json')
-arbeitnow=load('arbeitnow.json')
 
-jobs=[]
+def parse_dt(value):
+    if value is None:
+        return None
+    s = str(value).strip()
+    if not s:
+        return None
 
-# dashboard /api/jobs.py shape
-for j in dashboard.get('jobs',[]) if isinstance(dashboard,dict) else []:
-    if isinstance(j,dict):
-        jobs.append({
-            'title': j.get('title',''),
-            'company': j.get('company',''),
-            'location': j.get('location','Remote'),
-            'salary': j.get('salary',''),
-            'url': j.get('url',''),
-            'posted_at': j.get('posted','') or j.get('posted_at',''),
-            'tags': j.get('tags',[]) if isinstance(j.get('tags',[]),list) else [],
-            'description_snippet': j.get('snippet','')[:220],
-            'source': j.get('source','Dashboard'),
-        })
+    if s.isdigit():
+        try:
+            ts = int(s)
+            if ts > 1_000_000_000_000:
+                ts = ts / 1000
+            if ts > 1_000_000_000:
+                return datetime.fromtimestamp(ts, tz=timezone.utc)
+        except Exception:
+            pass
 
-# remotive shape
-for j in remotive.get('jobs',[]) if isinstance(remotive,dict) else []:
-    if isinstance(j,dict):
-        jobs.append({
-            'title': j.get('title',''),
-            'company': j.get('company_name',''),
-            'location': j.get('candidate_required_location','Remote'),
-            'salary': j.get('salary',''),
-            'url': j.get('url',''),
-            'posted_at': j.get('publication_date',''),
-            'tags': j.get('tags',[]) if isinstance(j.get('tags',[]),list) else [],
-            'description_snippet': (j.get('description','') or '')[:220],
-            'source': 'Remotive',
-        })
+    try:
+        dt = datetime.fromisoformat(s.replace("Z", "+00:00"))
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return dt.astimezone(timezone.utc)
+    except Exception:
+        pass
 
-# remoteok shape (first entry is metadata)
-if isinstance(remoteok,list):
-    for j in remoteok:
-        if not isinstance(j,dict) or 'position' not in j:
-            continue
-        jobs.append({
-            'title': j.get('position',''),
-            'company': j.get('company',''),
-            'location': j.get('location','Remote') or 'Remote',
-            'salary': '',
-            'url': j.get('url',''),
-            'posted_at': j.get('date',''),
-            'tags': j.get('tags',[]) if isinstance(j.get('tags',[]),list) else [],
-            'description_snippet': (j.get('description','') or '')[:220],
-            'source': 'RemoteOK',
-        })
+    try:
+        dt = parsedate_to_datetime(s)
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return dt.astimezone(timezone.utc)
+    except Exception:
+        return None
 
-# arbeitnow shape
-for j in arbeitnow.get('data',[]) if isinstance(arbeitnow,dict) else []:
-    if not isinstance(j,dict):
-        continue
-    jobs.append({
-        'title': j.get('title',''),
-        'company': j.get('company_name',''),
-        'location': 'Remote' if j.get('remote',False) else j.get('location',''),
-        'salary': '',
-        'url': j.get('url',''),
-        'posted_at': str(j.get('created_at','')),
-        'tags': j.get('tags',[]) if isinstance(j.get('tags',[]),list) else [],
-        'description_snippet': (j.get('description','') or '')[:220],
-        'source': 'Arbeitnow',
-    })
 
-# dedupe by title+company+url
-seen=set()
-unique=[]
-for j in jobs:
-    title=(j.get('title') or '').strip()
-    company=(j.get('company') or '').strip()
-    url=(j.get('url') or '').strip()
+def is_recent(posted_value, max_age_days=MAX_AGE_DAYS):
+    dt = parse_dt(posted_value)
+    if dt is None:
+        return True
+    age = datetime.now(timezone.utc) - dt
+    if age < timedelta(days=-2):
+        return False
+    return age <= timedelta(days=max_age_days)
+
+
+def normalize_job(job):
+    title = str(job.get("title") or "").strip()
+    url = str(job.get("url") or "").strip()
     if not title or not url:
-        continue
-    key=(title.lower(),company.lower(),url.lower())
+        return None
+
+    tags = job.get("tags", [])
+    if not isinstance(tags, list):
+        tags = []
+
+    return {
+        "title": title,
+        "company": str(job.get("company") or "").strip(),
+        "location": str(job.get("location") or "Remote").strip(),
+        "salary": str(job.get("salary") or ""),
+        "url": url,
+        "posted_at": str(job.get("posted_at") or ""),
+        "tags": tags[:10],
+        "description_snippet": clean_html(job.get("description_snippet") or ""),
+        "source": str(job.get("source") or "Unknown"),
+    }
+
+
+TARGET_TITLES = [
+    "software engineer", "software developer", "backend", "front end", "frontend", "full stack", "fullstack",
+    "data engineer", "data analyst", "data scientist", "analytics engineer", "ml engineer", "machine learning",
+    "ai engineer", "devops", "site reliability", "sre", "cloud engineer", "platform engineer", "python",
+    "node", "react", "typescript", "java", "golang", "rust", "security engineer", "devsecops",
+]
+
+EXCLUDE_TITLES = [
+    "account director", "account manager", "office assistant", "recruiter", "sales", "customer support",
+    "talent acquisition", "copywriter", "social media", "nurse", "pharmacist", "teacher",
+    "legal", "counsel", "attorney", "compliance", "hr ", "human resources", "marketing",
+]
+
+
+def matches_target(job):
+    title = f"{job.get('title','')}".lower()
+    tags_text = " ".join(job.get('tags', [])).lower()
+    text = f"{title} {tags_text}"
+    if any(x in text for x in EXCLUDE_TITLES):
+        return False
+    # Prefer explicit role-title matching
+    if any(x in title for x in TARGET_TITLES):
+        return True
+    # Allow tech-tag fallback for sparse titles
+    tech_tag_fallback = ["python", "backend", "frontend", "full-stack", "devops", "machine-learning", "data-engineering"]
+    return any(x in tags_text for x in tech_tag_fallback)
+
+
+# -----------------------------------------------------------------------------
+# Source adapters
+# -----------------------------------------------------------------------------
+def collect_greenhouse():
+    out = []
+    for board in greenhouse_boards:
+        try:
+            data = fetch_json(f"https://boards-api.greenhouse.io/v1/boards/{board}/jobs?content=true")
+            jobs = data.get("jobs", [])
+            board_hits = 0
+            for j in jobs:
+                title = j.get("title", "")
+                metadata = j.get("metadata", {})
+                company_from_meta = metadata.get("company_name") if isinstance(metadata, dict) else None
+                company = company_from_meta or board.replace("-", " ").title()
+                location = (j.get("location") or {}).get("name", "")
+                dept_names = [d.get("name", "") for d in j.get("departments", []) if isinstance(d, dict) and d.get("name")]
+                candidate = {
+                    "title": title,
+                    "company": company,
+                    "location": location or "Unknown",
+                    "salary": "",
+                    "url": j.get("absolute_url", ""),
+                    "posted_at": j.get("updated_at") or j.get("updatedAt") or j.get("created_at") or "",
+                    "tags": (dept_names + [board])[:6],
+                    "description_snippet": clean_html(j.get("content", "")),
+                    "source": f"Greenhouse:{board}",
+                }
+                if TARGET_ONLY and not matches_target(candidate):
+                    continue
+                out.append(candidate)
+                board_hits += 1
+                if board_hits >= PER_GREENHOUSE_BOARD_LIMIT:
+                    break
+        except Exception:
+            continue
+    return out
+
+
+def collect_remotive():
+    out = []
+    categories = ["software-dev", "data", "devops-sysadmin", "cyber-security"]
+    for cat in categories:
+        try:
+            data = fetch_json(f"https://remotive.com/api/remote-jobs?category={cat}&limit={PER_SOURCE_LIMIT}")
+            for j in data.get("jobs", [])[:PER_SOURCE_LIMIT]:
+                out.append({
+                    "title": j.get("title", ""),
+                    "company": j.get("company_name", ""),
+                    "location": j.get("candidate_required_location", "Remote"),
+                    "salary": j.get("salary", ""),
+                    "url": j.get("url", ""),
+                    "posted_at": j.get("publication_date", ""),
+                    "tags": j.get("tags", [])[:6] if isinstance(j.get("tags", []), list) else [],
+                    "description_snippet": clean_html(j.get("description", "")),
+                    "source": "Remotive",
+                })
+        except Exception:
+            continue
+    return out
+
+
+def collect_remoteok():
+    out = []
+    data = None
+    if USE_AGENT_BROWSER_REMOTEOK:
+        data = fetch_json_with_agent_browser("https://remoteok.com/api")
+    if data is None:
+        try:
+            data = fetch_json("https://remoteok.com/api")
+        except Exception:
+            data = []
+
+    if isinstance(data, list):
+        for j in data:
+            if not isinstance(j, dict) or "position" not in j:
+                continue
+            tags = j.get("tags", [])
+            if not isinstance(tags, list):
+                tags = []
+            out.append({
+                "title": j.get("position", ""),
+                "company": j.get("company", ""),
+                "location": j.get("location", "Remote") or "Remote",
+                "salary": "",
+                "url": j.get("url", ""),
+                "posted_at": j.get("date", ""),
+                "tags": tags[:6],
+                "description_snippet": clean_html(j.get("description", "")),
+                "source": "RemoteOK",
+            })
+    return out[:PER_SOURCE_LIMIT]
+
+
+def collect_arbeitnow():
+    out = []
+    try:
+        data = fetch_json("https://www.arbeitnow.com/api/job-board-api")
+        for j in data.get("data", [])[:PER_SOURCE_LIMIT]:
+            tags = j.get("tags", [])
+            if not isinstance(tags, list):
+                tags = []
+            out.append({
+                "title": j.get("title", ""),
+                "company": j.get("company_name", ""),
+                "location": "Remote" if j.get("remote") else j.get("location", ""),
+                "salary": "",
+                "url": j.get("url", ""),
+                "posted_at": str(j.get("created_at", "")),
+                "tags": tags[:6],
+                "description_snippet": clean_html(j.get("description", "")),
+                "source": "Arbeitnow",
+            })
+    except Exception:
+        pass
+    return out
+
+
+# -----------------------------------------------------------------------------
+# Collect + normalize + filter
+# -----------------------------------------------------------------------------
+collected = []
+collected.extend(collect_greenhouse())
+collected.extend(collect_remotive())
+collected.extend(collect_remoteok())
+collected.extend(collect_arbeitnow())
+
+normalized = []
+for j in collected:
+    nj = normalize_job(j)
+    if nj:
+        normalized.append(nj)
+
+# Deduplicate (url first, then title+company)
+seen = set()
+unique = []
+for j in normalized:
+    key = (
+        (j.get("url") or "").strip().lower(),
+        (j.get("title") or "").strip().lower(),
+        (j.get("company") or "").strip().lower(),
+    )
     if key in seen:
         continue
     seen.add(key)
     unique.append(j)
 
-if target_only:
-    target_titles=[
-      'software engineer','software developer','backend','full stack','fullstack',
-      'data engineer','data analyst','data scientist','analytics engineer',
-      'ml engineer','machine learning','ai engineer','python developer',
-      'devops','sre','cloud engineer','platform engineer','bi engineer','bi developer'
-    ]
-    target_locs=['remote','usa','united states','fort wayne','indiana','indianapolis','dallas','irving','texas','worldwide']
-    def keep(j):
-        t=(j.get('title') or '').lower()
-        l=(j.get('location') or '').lower()
-        return any(x in t for x in target_titles) and (any(x in l for x in target_locs) or not l)
-    unique=[j for j in unique if keep(j)]
+# Freshness
+unique = [j for j in unique if is_recent(j.get("posted_at"))]
 
-sources=sorted(list({(j.get('source') or 'Unknown') for j in unique}))
-print(json.dumps({
-  'fetched_at': timestamp,
-  'sources': sources,
-  'total': len(unique),
-  'jobs': unique
-}, indent=2, default=str))
+# Targeted role filter
+if TARGET_ONLY:
+    unique = [j for j in unique if matches_target(j)]
+
+# Keep deterministic order by newest posted date where possible
+unique.sort(key=lambda j: parse_dt(j.get("posted_at")) or datetime(1970,1,1,tzinfo=timezone.utc), reverse=True)
+
+source_counts = {}
+for j in unique:
+    src = j.get("source", "Unknown")
+    source_counts[src] = source_counts.get(src, 0) + 1
+
+output = {
+    "fetched_at": TIMESTAMP,
+    "sources": sorted(list(source_counts.keys())),
+    "source_counts": source_counts,
+    "fresh_window_days": MAX_AGE_DAYS,
+    "total": len(unique),
+    "jobs": unique,
+}
+
+print(json.dumps(output, indent=2, default=str))
 PY
-
-log "Collection complete"
