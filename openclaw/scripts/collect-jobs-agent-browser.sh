@@ -47,7 +47,7 @@ TIMESTAMP = sys.argv[2]
 # -----------------------------------------------------------------------------
 MAX_AGE_DAYS = int(os.environ.get("JOBS_COLLECT_MAX_AGE_DAYS", "10"))
 PER_SOURCE_LIMIT = int(os.environ.get("JOBS_PER_SOURCE_LIMIT", "60"))
-PER_GREENHOUSE_BOARD_LIMIT = int(os.environ.get("JOBS_PER_GREENHOUSE_BOARD_LIMIT", "30"))
+PER_GREENHOUSE_BOARD_LIMIT = int(os.environ.get("JOBS_PER_GREENHOUSE_BOARD_LIMIT", "15"))
 USE_AGENT_BROWSER_REMOTEOK = os.environ.get("USE_AGENT_BROWSER_REMOTEOK", "0") == "1"
 
 DEFAULT_GREENHOUSE_BOARDS = [
@@ -59,10 +59,46 @@ DEFAULT_GREENHOUSE_BOARDS = [
     "figma",
     "coinbase",
     "roblox",
+    "amazon",
+    "microsoft",
+    "google",
+    "meta",
+    "apple",
+    "nvidia",
+    "tesla",
+    "netflix",
+    "uber",
+    "lyft",
+    "spotify",
+    "snap",
+    "pinterest",
+    "reddit",
+    "snapchat",
+    "twitter",
+    "discord",
+    "twitch",
+]
+
+# Lever boards (different from Greenhouse)
+DEFAULT_LEVER_BOARDS = [
+    "plaid",
+    "notion",
+    "twilio",
+    "lyft",
+    "airbnb",
+    "doordash",
+    "square",
+    "snowflake",
+    "hashicorp",
+    "robinhood",
 ]
 
 greenhouse_boards = [
     b.strip() for b in os.environ.get("GREENHOUSE_BOARDS", ",".join(DEFAULT_GREENHOUSE_BOARDS)).split(",") if b.strip()
+]
+
+lever_boards = [
+    b.strip() for b in os.environ.get("LEVER_BOARDS", ",".join(DEFAULT_LEVER_BOARDS)).split(",") if b.strip()
 ]
 
 UA = "Mozilla/5.0 (OpenClaw Hunter Collector)"
@@ -313,11 +349,39 @@ def collect_arbeitnow():
     return out
 
 
+def collect_lever():
+    """Collect jobs from Lever API."""
+    out = []
+    for board in lever_boards:
+        try:
+            data = fetch_json(f"https://api.lever.co/v0/postings/{board}")
+            if not isinstance(data, list):
+                continue
+            for j in data[:PER_GREENHOUSE_BOARD_LIMIT]:
+                categories = j.get("categories", {})
+                posted = j.get("createdAt")
+                out.append({
+                    "title": j.get("text", ""),
+                    "company": board.replace("-", " ").title(),
+                    "location": categories.get("location", "Unknown") or categories.get("team", "Unknown"),
+                    "salary": categories.get("salary", ""),
+                    "url": j.get("applyUrl", ""),
+                    "posted_at": str(posted) if posted else "",
+                    "tags": [categories.get("team", ""), categories.get("location", "")][:5],
+                    "description_snippet": clean_html(j.get("description", "")),
+                    "source": f"Lever:{board}",
+                })
+        except Exception:
+            continue
+    return out
+
+
 # -----------------------------------------------------------------------------
 # Collect + normalize + filter
 # -----------------------------------------------------------------------------
 collected = []
 collected.extend(collect_greenhouse())
+collected.extend(collect_lever())
 collected.extend(collect_remotive())
 collected.extend(collect_remoteok())
 collected.extend(collect_arbeitnow())
