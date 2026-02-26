@@ -12,38 +12,46 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Setup SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H ${{ secrets.DROPLET_IP }} >> ~/.ssh/known_hosts 2>/dev/null
+          # Debug: show key format (first line only, safe to log)
+          head -1 ~/.ssh/deploy_key
+          wc -l ~/.ssh/deploy_key
+          ssh -o StrictHostKeyChecking=no -i ~/.ssh/deploy_key root@${{ secrets.DROPLET_IP }} echo 'SSH connection successful'
+
       - name: Deploy to Droplet
-        uses: appleboy/ssh-action@v1
-        with:
-          host: ${{ secrets.DROPLET_IP }}
-          username: root
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          script: |
-            set -euo pipefail
-            
-            # Pull latest code
-            cd /opt/dashboard/app
-            
-            # If repo not cloned yet, do initial setup
-            if [ ! -d ".git" ]; then
-              cd /opt/dashboard
-              rm -rf app
-              git clone https://github.com/JithendraNara/it-dashboard.git app
-              mkdir -p app/data
-              chown -R www-data:www-data app/data
-            else
-              git fetch origin
-              git reset --hard origin/main
-            fi
-            
-            # Update dependencies if requirements changed
-            /opt/dashboard/venv/bin/pip install -q -r requirements.txt
-            
-            # Restart the service
-            systemctl restart dashboard
-            
-            # Quick health check
-            sleep 3
-            curl -sf http://localhost:8000/health || echo "WARNING: health check failed"
-            
-            echo "Deploy complete at $(date)"
+        run: |
+          ssh -o StrictHostKeyChecking=no -i ~/.ssh/deploy_key root@${{ secrets.DROPLET_IP }} << 'ENDSSH'
+          set -euo pipefail
+          
+          cd /opt/dashboard/app
+          
+          if [ ! -d ".git" ]; then
+            cd /opt/dashboard
+            rm -rf app
+            git clone https://github.com/JithendraNara/it-dashboard.git app
+            mkdir -p app/data
+            chown -R www-data:www-data app/data
+          else
+            git config --global --add safe.directory /opt/dashboard/app
+            git fetch origin
+            git reset --hard origin/main
+          fi
+          
+          /opt/dashboard/venv/bin/pip install -q -r requirements.txt
+          
+          systemctl restart dashboard
+          
+          sleep 3
+          curl -sf http://localhost:8000/health || echo "WARNING: health check failed"
+          
+          echo "Deploy complete at $(date)"
+          ENDSSH
+
+      - name: Cleanup
+        if: always()
+        run: rm -f ~/.ssh/deploy_key
