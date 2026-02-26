@@ -39,6 +39,8 @@ DASHBOARD_DATA_FILE = DATA_DIR / "dashboard_data.json"
 
 CACHE_TTL = 1800   # 30 minutes
 MAX_BODY_SIZE = 1_048_576  # 1 MB
+JOBS_SNAPSHOT_MAX_AGE_SECONDS = 6 * 3600  # Hunter snapshot freshness window
+JOBS_SNAPSHOT_MAX_ITEMS = 1000
 FALLBACK_SECRET = "REPLACE_ME_WITH_A_RANDOM_SECRET_STRING_32_CHARS_MINIMUM"
 
 
@@ -150,6 +152,61 @@ def fetch_arbeitnow(timeout=15):
     except Exception:
         pass
     return jobs
+
+
+def normalize_ingested_job(job: dict) -> dict:
+    """Normalize incoming Hunter-provided jobs to dashboard schema."""
+    if not isinstance(job, dict):
+        return {}
+
+    source_raw = str(job.get("source", "") or "")
+    source_lower = source_raw.lower()
+    if "remotive" in source_lower:
+        source = "Remotive"
+    elif "remoteok" in source_lower:
+        source = "RemoteOK"
+    elif "arbeitnow" in source_lower:
+        source = "Arbeitnow"
+    else:
+        source = source_raw or "Hunter"
+
+    location = str(
+        job.get("location")
+        or job.get("candidate_required_location")
+        or "Remote"
+    )
+    type_value = str(job.get("type") or "")
+    if not type_value:
+        type_value = "Remote" if "remote" in location.lower() else "Full-time"
+
+    tags = job.get("tags", [])
+    if not isinstance(tags, list):
+        tags = []
+
+    return {
+        "title": str(job.get("title") or job.get("job_title") or "").strip(),
+        "company": str(job.get("company") or job.get("company_name") or "").strip(),
+        "location": location,
+        "salary": str(job.get("salary") or ""),
+        "type": type_value,
+        "posted": str(
+            job.get("posted")
+            or job.get("posted_at")
+            or job.get("publication_date")
+            or job.get("date")
+            or job.get("created_at")
+            or ""
+        ),
+        "url": str(job.get("url") or job.get("job_url") or ""),
+        "tags": tags[:8],
+        "source": source,
+        "snippet": clean_html(
+            job.get("snippet")
+            or job.get("description_snippet")
+            or job.get("description")
+            or ""
+        ),
+    }
 
 
 # ── Role relevance filter ─────────────────────────────────────────────────────
@@ -357,6 +414,14 @@ def load_current_data() -> dict:
         "kpi_updates":   {},
         "trend_alerts":  [],
         "new_insights":  [],
+        "jobs_snapshot": {
+            "fetched_at": None,
+            "updated_at": None,
+            "source": None,
+            "sources": [],
+            "total": 0,
+            "jobs": [],
+        },
         "history":       [],  # rolling log of past updates (last 50 kept)
     }
 
@@ -391,11 +456,13 @@ def merge_update(current: dict, payload: dict) -> dict:
 
     # Build merged data
     merged = dict(current)
+    update_source = payload.get("update_source") or current.get("meta", {}).get("update_source") or "atlas"
+
     merged["meta"] = {
         "schema_version": "1.0",
         "created_at":     current.get("meta", {}).get("created_at", now_iso),
         "last_updated":   now_iso,
-        "update_source":  "atlas",
+        "update_source":  update_source,
     }
 
     if "market_status" in payload:
@@ -415,6 +482,21 @@ def merge_update(current: dict, payload: dict) -> dict:
         # Prepend new insights, cap at 50 total
         existing_insights = current.get("new_insights", [])
         merged["new_insights"] = (payload["new_insights"] + existing_insights)[:50]
+
+    if "jobs_snapshot" in payload:
+        incoming_snapshot = payload.get("jobs_snapshot", {})
+        incoming_jobs = incoming_snapshot.get("jobs", []) if isinstance(incoming_snapshot, dict) else []
+        normalized_jobs = [normalize_ingested_job(j) for j in incoming_jobs[:JOBS_SNAPSHOT_MAX_ITEMS]]
+        normalized_jobs = [j for j in normalized_jobs if j.get("title") and j.get("url")]
+
+        merged["jobs_snapshot"] = {
+            "fetched_at": incoming_snapshot.get("fetched_at") or now_iso,
+            "updated_at": now_iso,
+            "source": update_source,
+            "sources": incoming_snapshot.get("sources", []),
+            "total": len(normalized_jobs),
+            "jobs": normalized_jobs,
+        }
 
     merged["history"] = history
     return merged
@@ -444,10 +526,38 @@ def api_jobs():
     force    = request.args.get("force", "0") == "1"
     page_size = 20
 
-    # Cache check
-    all_jobs   = []
-    from_cache = False
-    if not force and JOBS_CACHE_FILE.exists():
+    # Prefer Hunter-provided snapshot unless force refresh is requested
+    all_jobs      = []
+    from_cache    = False
+    from_snapshot = False
+    fetched_at    = datetime.now(timezone.utc).isoformat()
+
+    if not force:
+        try:
+            current_data = load_current_data()
+            snapshot = current_data.get("jobs_snapshot", {})
+            snapshot_jobs = snapshot.get("jobs", []) if isinstance(snapshot, dict) else []
+            snapshot_updated_at = snapshot.get("updated_at")
+            snapshot_age_ok = False
+            if snapshot_updated_at:
+                try:
+                    su = datetime.fromisoformat(snapshot_updated_at)
+                    if su.tzinfo is None:
+                        su = su.replace(tzinfo=timezone.utc)
+                    snapshot_age_ok = (datetime.now(timezone.utc) - su).total_seconds() <= JOBS_SNAPSHOT_MAX_AGE_SECONDS
+                except Exception:
+                    snapshot_age_ok = False
+
+            if snapshot_jobs and snapshot_age_ok:
+                all_jobs = [normalize_ingested_job(j) for j in snapshot_jobs]
+                all_jobs = [j for j in all_jobs if j.get("title") and j.get("url")]
+                from_snapshot = True
+                fetched_at = snapshot.get("fetched_at") or fetched_at
+        except Exception:
+            pass
+
+    # Fallback to local cache of upstream market APIs
+    if not all_jobs and not force and JOBS_CACHE_FILE.exists():
         try:
             cache = json.loads(JOBS_CACHE_FILE.read_text())
             if time.time() - cache.get("ts", 0) < CACHE_TTL:
@@ -496,7 +606,9 @@ def api_jobs():
         "onsite_count":  len(filtered) - remote_count,
         "top_tags":      [t[0] for t in top_tags],
         "from_cache":    from_cache,
-        "fetched_at":    datetime.now(timezone.utc).isoformat(),
+        "from_snapshot": from_snapshot,
+        "data_source":   "hunter_snapshot" if from_snapshot else "market_apis",
+        "fetched_at":    fetched_at,
     }
     return cors_response(result)
 
@@ -614,6 +726,16 @@ def api_update_post():
         return cors_response({"ok": False, "error": "'new_insights' must be an array"}, 400)
     if "market_status" in payload and not isinstance(payload["market_status"], str):
         return cors_response({"ok": False, "error": "'market_status' must be a string"}, 400)
+    if "update_source" in payload and not isinstance(payload["update_source"], str):
+        return cors_response({"ok": False, "error": "'update_source' must be a string"}, 400)
+    if "jobs_snapshot" in payload:
+        if not isinstance(payload["jobs_snapshot"], dict):
+            return cors_response({"ok": False, "error": "'jobs_snapshot' must be an object"}, 400)
+        jobs = payload["jobs_snapshot"].get("jobs", [])
+        if not isinstance(jobs, list):
+            return cors_response({"ok": False, "error": "'jobs_snapshot.jobs' must be an array"}, 400)
+        if len(jobs) > JOBS_SNAPSHOT_MAX_ITEMS:
+            return cors_response({"ok": False, "error": f"'jobs_snapshot.jobs' exceeds max {JOBS_SNAPSHOT_MAX_ITEMS}"}, 400)
 
     # Merge and persist
     try:
@@ -631,6 +753,7 @@ def api_update_post():
         "kpi_count":     len(payload.get("kpi_updates", {})),
         "alert_count":   len(payload.get("trend_alerts", [])),
         "insight_count": len(payload.get("new_insights", [])),
+        "jobs_count":    len(payload.get("jobs_snapshot", {}).get("jobs", [])) if isinstance(payload.get("jobs_snapshot"), dict) else 0,
     })
 
 
