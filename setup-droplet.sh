@@ -53,7 +53,7 @@ Description=IT Jobs Intelligence Dashboard
 After=network.target
 
 [Service]
-Type=notify
+Type=simple
 User=www-data
 Group=www-data
 WorkingDirectory=$APP_DIR
@@ -69,6 +69,11 @@ SVCEOF
 
 systemctl daemon-reload
 systemctl enable dashboard
+
+# Create log files before starting the service
+touch /var/log/dashboard-access.log /var/log/dashboard-error.log
+chown www-data:www-data /var/log/dashboard-access.log /var/log/dashboard-error.log
+
 systemctl start dashboard
 echo "  ✓ Dashboard service started"
 
@@ -139,7 +144,7 @@ fi
 
 echo ""
 echo "  Dashboard:  http://$IP"
-echo "  Health:     http://$IP/health"
+echo "  Health:     http://$IP/health"  
 echo "  Jobs API:   http://$IP/api/jobs.py"
 echo "  Update API: http://$IP/api/update.py"
 echo ""
