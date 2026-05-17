@@ -12,6 +12,7 @@ import html
 import time
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
+from urllib.parse import urlparse
 from urllib.request import urlopen, Request
 from urllib.error import URLError
 from xml.etree import ElementTree
@@ -43,7 +44,29 @@ MAX_BODY_SIZE = 1_048_576  # 1 MB
 JOBS_SNAPSHOT_MAX_AGE_SECONDS = 6 * 3600  # Hunter snapshot freshness window
 JOBS_SNAPSHOT_MAX_ITEMS = 1000
 JOBS_MAX_AGE_DAYS = int(os.environ.get("JOBS_MAX_AGE_DAYS", "10"))  # hide stale postings
-FALLBACK_SECRET = "REPLACE_ME_WITH_A_RANDOM_SECRET_STRING_32_CHARS_MINIMUM"
+
+
+def safe_external_url(value) -> str:
+    """Allow only browser-safe external links."""
+    if not value:
+        return ""
+    url = str(value).strip()
+    parsed = urlparse(url)
+    if parsed.scheme not in {"http", "https"}:
+        return ""
+    if not parsed.netloc:
+        return ""
+    return url
+
+
+def parse_positive_int(value, default=1, max_value=10_000) -> int:
+    try:
+        parsed = int(value)
+    except (TypeError, ValueError):
+        return default
+    if parsed < 1:
+        return default
+    return min(parsed, max_value)
 
 
 # ─── CORS helper ──────────────────────────────────────────────────────────────
@@ -85,7 +108,7 @@ def fetch_remotive(query="", timeout=15):
                     "salary":   j.get("salary", ""),
                     "type":     "Remote",
                     "posted":   j.get("publication_date", ""),
-                    "url":      j.get("url", ""),
+                    "url":      safe_external_url(j.get("url", "")),
                     "tags":     j.get("tags", [])[:6],
                     "source":   "Remotive",
                     "snippet":  clean_html(j.get("description", "")),
@@ -116,7 +139,7 @@ def fetch_remoteok(timeout=15):
                     "salary":   "",
                     "type":     "Remote",
                     "posted":   j.get("date", ""),
-                    "url":      j.get("url", f"https://remoteOK.com/remote-jobs/{j.get('slug', '')}"),
+                    "url":      safe_external_url(j.get("url", f"https://remoteOK.com/remote-jobs/{j.get('slug', '')}")),
                     "tags":     tags,
                     "source":   "RemoteOK",
                     "snippet":  clean_html(j.get("description", "")),
@@ -146,7 +169,7 @@ def fetch_arbeitnow(timeout=15):
                 "salary":   "",
                 "type":     "Full-time" if not j.get("remote", False) else "Remote",
                 "posted":   str(j.get("created_at", "")),
-                "url":      j.get("url", ""),
+                "url":      safe_external_url(j.get("url", "")),
                 "tags":     tags,
                 "source":   "Arbeitnow",
                 "snippet":  clean_html(j.get("description", "")),
@@ -199,7 +222,7 @@ def normalize_ingested_job(job: dict) -> dict:
             or job.get("created_at")
             or ""
         ),
-        "url": str(job.get("url") or job.get("job_url") or ""),
+        "url": safe_external_url(job.get("url") or job.get("job_url") or ""),
         "tags": tags[:8],
         "source": source,
         "snippet": clean_html(
@@ -372,14 +395,14 @@ def fetch_rss(url, source_name, timeout=12):
         # RSS 2.0
         for item in root.findall(".//item")[:10]:
             title = item.findtext("title", "")
-            link  = item.findtext("link", "")
+            link  = safe_external_url(item.findtext("link", ""))
             pub   = item.findtext("pubDate", "")
             desc  = item.findtext("description", "")
             text  = (title + " " + desc).lower()
             if any(k in text for k in NEWS_KEYWORDS):
                 items.append({
                     "title":     title.strip(),
-                    "url":       link.strip(),
+                    "url":       link,
                     "published": pub.strip(),
                     "source":    source_name,
                     "snippet":   desc[:300].replace("<![CDATA[", "").replace("]]>", "").strip(),
@@ -389,7 +412,7 @@ def fetch_rss(url, source_name, timeout=12):
         for entry in root.findall("atom:entry", ns)[:10]:
             title   = entry.findtext("atom:title", "", ns)
             link_el = entry.find("atom:link", ns)
-            link    = link_el.get("href", "") if link_el is not None else ""
+            link    = safe_external_url(link_el.get("href", "") if link_el is not None else "")
             pub     = (entry.findtext("atom:published", "", ns)
                        or entry.findtext("atom:updated", "", ns))
             desc    = (entry.findtext("atom:summary", "", ns)
@@ -398,7 +421,7 @@ def fetch_rss(url, source_name, timeout=12):
             if any(k in text for k in NEWS_KEYWORDS):
                 items.append({
                     "title":     title.strip(),
-                    "url":       link.strip(),
+                    "url":       link,
                     "published": pub.strip(),
                     "source":    source_name,
                     "snippet":   desc[:300].strip(),
@@ -424,7 +447,7 @@ def get_news_cached():
 # ══════════════════════════════════════════════════════════════════════════════
 
 def get_auth_token() -> str:
-    return os.environ.get("DASHBOARD_UPDATE_TOKEN", FALLBACK_SECRET)
+    return os.environ.get("DASHBOARD_UPDATE_TOKEN", "")
 
 
 def _ct_compare(a: str, b: str) -> bool:
@@ -439,6 +462,8 @@ def _ct_compare(a: str, b: str) -> bool:
 
 def validate_bearer(env_token: str) -> bool:
     """Check Authorization header contains a valid Bearer token."""
+    if not env_token:
+        return False
     auth_header = request.headers.get("Authorization", "")
     if not auth_header.startswith("Bearer "):
         return False
@@ -574,7 +599,7 @@ def api_jobs():
     query    = request.args.get("query", "").strip()
     location = request.args.get("location", "").strip()
     job_type = request.args.get("type", "all")
-    page     = int(request.args.get("page", "1"))
+    page     = parse_positive_int(request.args.get("page", "1"))
     force    = request.args.get("force", "0") == "1"
     page_size = 20
 

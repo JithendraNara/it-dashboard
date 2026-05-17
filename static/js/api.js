@@ -101,6 +101,7 @@ const API = (() => {
 
   /* ── JOB CARD RENDERER ────────────────────────────────────── */
   function renderJobCard(job) {
+    const jobUrl = safeUrl(job.url);
     const typeBadge = (job.type || '').toLowerCase().includes('remote')
       ? '<span class="badge badge-remote">Remote</span>'
       : '<span class="badge badge-ft">Full-time</span>';
@@ -122,7 +123,7 @@ const API = (() => {
     return `
       <div class="job-card">
         <div class="job-left">
-          <a class="job-title" href="${escHtml(job.url || '#')}" target="_blank" rel="noopener noreferrer">
+          <a class="job-title" href="${escHtml(jobUrl)}" target="_blank" rel="noopener noreferrer">
             ${escHtml(job.title || 'Untitled Role')}
           </a>
           <div class="job-meta">
@@ -139,7 +140,7 @@ const API = (() => {
         </div>
         <div class="job-right">
           <span class="job-time">${time}</span>
-          <a class="apply-btn" href="${escHtml(job.url || '#')}" target="_blank" rel="noopener noreferrer">Apply →</a>
+          <a class="apply-btn" href="${escHtml(jobUrl)}" target="_blank" rel="noopener noreferrer">Apply →</a>
         </div>
       </div>
     `;
@@ -147,6 +148,7 @@ const API = (() => {
 
   /* ── NEWS CARD RENDERER ──────────────────────────────────── */
   function renderNewsCard(item) {
+    const itemUrl = safeUrl(item.url);
     const topic = categorizeNews(item);
     const label = topicLabels[topic];
     const date  = formatDate(item.published) || relativeTime(item.published);
@@ -160,13 +162,13 @@ const API = (() => {
           <span class="news-topic-badge">${label}</span>
           <span class="news-source-badge">${escHtml(item.source || '')}</span>
         </div>
-        <a class="news-title" href="${escHtml(item.url || '#')}" target="_blank" rel="noopener noreferrer">
+        <a class="news-title" href="${escHtml(itemUrl)}" target="_blank" rel="noopener noreferrer">
           ${cleanText(item.title || 'Untitled')}
         </a>
         ${snippet ? `<p class="news-snippet">${snippet}</p>` : ''}
         <div class="news-footer">
           <span>${date}</span>
-          <a href="${escHtml(item.url || '#')}" target="_blank" rel="noopener noreferrer" style="color:var(--cyan);font-size:10px;">Read →</a>
+          <a href="${escHtml(itemUrl)}" target="_blank" rel="noopener noreferrer" style="color:var(--cyan);font-size:10px;">Read →</a>
         </div>
       </div>
     `;
@@ -212,6 +214,19 @@ const API = (() => {
       .replace(/</g, '&lt;')
       .replace(/>/g, '&gt;')
       .replace(/"/g, '&quot;');
+  }
+
+  function safeUrl(value) {
+    if (!value) return '#';
+    try {
+      const url = new URL(String(value), window.location.origin);
+      if (url.protocol === 'http:' || url.protocol === 'https:') {
+        return url.href;
+      }
+    } catch {
+      // Fall through to inert link.
+    }
+    return '#';
   }
 
   function cleanText(str) {
