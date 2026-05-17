@@ -11,12 +11,24 @@ import json
 import os
 import sys
 import urllib.request
+from urllib.parse import urlparse
 from datetime import datetime, timezone
 
 DASHBOARD_URL = os.getenv("DASHBOARD_URL", "http://45.55.191.125")
 TOKEN = os.getenv("DASHBOARD_UPDATE_TOKEN", "")
-DEFAULT_TOKEN = "f2e10ce9e211948c6eeacf1b13c0fcf631ec4b70f706f03fe930f647a5013466"
 MAX_JOBS = 500
+
+
+def safe_external_url(value) -> str:
+    if not value:
+        return ""
+    url = str(value).strip()
+    parsed = urlparse(url)
+    if parsed.scheme not in {"http", "https"}:
+        return ""
+    if not parsed.netloc:
+        return ""
+    return url
 
 
 def normalize(job: dict) -> dict:
@@ -24,7 +36,7 @@ def normalize(job: dict) -> dict:
         return {}
 
     title = str(job.get("title") or job.get("job_title") or "").strip()
-    url = str(job.get("url") or job.get("job_url") or "").strip()
+    url = safe_external_url(job.get("url") or job.get("job_url") or "")
     if not title or not url:
         return {}
 
@@ -72,13 +84,16 @@ def main() -> int:
     }
 
     body = json.dumps(payload).encode("utf-8")
-    token = TOKEN or DEFAULT_TOKEN
+    if not TOKEN:
+        print("DASHBOARD_UPDATE_TOKEN is required; refusing to use a fallback token.", file=sys.stderr)
+        return 2
+
     req = urllib.request.Request(
         f"{DASHBOARD_URL}/api/update.py",
         data=body,
         headers={
             "Content-Type": "application/json",
-            "Authorization": f"Bearer {token}",
+            "Authorization": f"Bearer {TOKEN}",
         },
         method="POST",
     )

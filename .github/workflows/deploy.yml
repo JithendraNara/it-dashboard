@@ -25,7 +25,16 @@ jobs:
           ssh -o StrictHostKeyChecking=no -i ~/.ssh/deploy_key root@${{ secrets.DROPLET_IP }} echo 'SSH connection successful'
 
       - name: Deploy to Droplet
+        env:
+          DASHBOARD_UPDATE_TOKEN: ${{ secrets.DASHBOARD_UPDATE_TOKEN }}
         run: |
+          token_file="$(mktemp)"
+          if [ -n "${DASHBOARD_UPDATE_TOKEN:-}" ]; then
+            printf '%s' "${DASHBOARD_UPDATE_TOKEN}" > "$token_file"
+            scp -o StrictHostKeyChecking=no -i ~/.ssh/deploy_key "$token_file" root@${{ secrets.DROPLET_IP }}:/tmp/dashboard_update_token
+          fi
+          rm -f "$token_file"
+
           ssh -o StrictHostKeyChecking=no -i ~/.ssh/deploy_key root@${{ secrets.DROPLET_IP }} << 'ENDSSH'
           set -euo pipefail
           
@@ -44,6 +53,22 @@ jobs:
           fi
           
           /opt/dashboard/venv/bin/pip install -q -r requirements.txt
+
+          if [ -s /tmp/dashboard_update_token ]; then
+            DASHBOARD_UPDATE_TOKEN="$(cat /tmp/dashboard_update_token)"
+            rm -f /tmp/dashboard_update_token
+            if [ "${#DASHBOARD_UPDATE_TOKEN}" -lt 32 ]; then
+              echo "ERROR: DASHBOARD_UPDATE_TOKEN must be at least 32 characters" >&2
+              exit 1
+            fi
+            escaped_token="$(printf '%s' "$DASHBOARD_UPDATE_TOKEN" | sed 's/[\/&]/\\&/g')"
+            if grep -q '^Environment="DASHBOARD_UPDATE_TOKEN=' /etc/systemd/system/dashboard.service; then
+              sed -i "s/^Environment=\"DASHBOARD_UPDATE_TOKEN=.*/Environment=\"DASHBOARD_UPDATE_TOKEN=${escaped_token}\"/" /etc/systemd/system/dashboard.service
+            else
+              sed -i "/^Environment=\"PATH=/a Environment=\"DASHBOARD_UPDATE_TOKEN=${escaped_token}\"" /etc/systemd/system/dashboard.service
+            fi
+            systemctl daemon-reload
+          fi
           
           systemctl restart dashboard
           

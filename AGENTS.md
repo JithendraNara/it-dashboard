@@ -22,8 +22,9 @@ while working on a task, update `.cursor/skills/run-and-test.md` (see the
 - Do not commit runtime files under `data/` — `jobs_cache.json`,
   `news_cache.json`, and `dashboard_data.json` are gitignored. The only
   tracked file there is `data/.gitkeep`.
-- Do not commit real tokens. The `DASHBOARD_UPDATE_TOKEN` baked into
-  `setup-droplet.sh` is the deployed value; for local work always export your
+- Do not commit real tokens. `setup-droplet.sh` now uses
+  `DASHBOARD_UPDATE_TOKEN` from the environment when provided, or generates a
+  one-time random token during droplet setup. For local work always export your
   own throwaway token and rely on it via the env var.
 - The Python venv at `venv/` is checked in for convenience on this machine —
   use `./venv/bin/python` and `./venv/bin/gunicorn` rather than installing

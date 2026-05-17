@@ -66,7 +66,7 @@ test payloads so you don't leave junk behind.
 
 | Var | Purpose | Local default |
 |---|---|---|
-| `DASHBOARD_UPDATE_TOKEN` | Bearer token required for `POST /api/update.py` | falls back to `FALLBACK_SECRET` constant in `app.py` if unset — **always set it explicitly** so tests are deterministic |
+| `DASHBOARD_UPDATE_TOKEN` | Bearer token required for `POST /api/update.py` | no default; unauthenticated writes fail when unset — **always set it explicitly** so tests are deterministic |
 | `JOBS_MAX_AGE_DAYS` | Hide job postings older than N days (default 10) | leave unset unless testing freshness filter |
 
 There are no real "feature flags" — behaviour is toggled via query params

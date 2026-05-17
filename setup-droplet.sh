@@ -9,7 +9,7 @@ set -euo pipefail
 REPO="https://github.com/JithendraNara/it-dashboard.git"
 APP_DIR="/opt/dashboard/app"
 VENV_DIR="/opt/dashboard/venv"
-TOKEN="f2e10ce9e211948c6eeacf1b13c0fcf631ec4b70f706f03fe930f647a5013466"
+TOKEN="${DASHBOARD_UPDATE_TOKEN:-}"
 
 echo ""
 echo "═══════════════════════════════════════════════════"
@@ -20,8 +20,17 @@ echo ""
 # ─── System packages ──────────────────────────────────
 echo "[1/6] Installing system packages..."
 apt-get update -qq
-apt-get install -y -qq python3-pip python3-venv nginx ufw git > /dev/null 2>&1
+apt-get install -y -qq python3-pip python3-venv nginx ufw git openssl > /dev/null 2>&1
 echo "  ✓ Packages installed"
+
+if [ -z "$TOKEN" ]; then
+  TOKEN="$(openssl rand -hex 32)"
+fi
+
+if [ "${#TOKEN}" -lt 32 ]; then
+  echo "ERROR: DASHBOARD_UPDATE_TOKEN must be at least 32 characters." >&2
+  exit 1
+fi
 
 # ─── Clone repo ───────────────────────────────────────
 echo "[2/6] Cloning repository..."
